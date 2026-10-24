@@ -5,9 +5,37 @@ export type ViewMode = 'home' | 'ambient' | 'focus'
 export type TimerMode = 'focus' | 'short' | 'long'
 export type PanelId = 'tasks' | 'music' | 'notes'
 export type SettingsSection =
-  | 'themes' | 'clock' | 'timer' | 'stats' | 'quotes' | 'music' | 'extras' | 'account' | 'about'
+  | 'themes' | 'modes' | 'companions' | 'clock' | 'timer' | 'stats' | 'quotes' | 'music' | 'extras' | 'account' | 'about'
 export type ClockStyle = 'classic' | 'flip' | 'ring' | 'analog' | 'minimal' | 'pixel' | 'words' | 'poster'
-export type ProgressStyle = 'ring' | 'bar' | 'glow' | 'off'
+export type ProgressStyle = 'orbit' | 'ring' | 'bar' | 'glow' | 'off'
+export type CompanionId = 'tomato' | 'cat' | 'fox' | 'ghost' | 'robot' | 'sprout'
+export type AccessoryId = 'none' | 'headphones' | 'party' | 'flowers' | 'wizard' | 'crown'
+export type CompanionSpot = 'beside' | 'left' | 'right'
+export type CompanionSize = 'sm' | 'md' | 'lg'
+
+/** Everything a single mode (Home / Ambient / Focus) can be customized with. */
+export interface ModeConfig {
+  clockStyle: ClockStyle
+  progress: ProgressStyle
+  companion: CompanionId | 'none'
+  spot: CompanionSpot
+  size: CompanionSize
+  greeting: boolean
+  quote: boolean
+  modeTabs: boolean
+  cycle: boolean
+  task: boolean
+  timerCard: boolean
+}
+
+export interface PetSettings {
+  accessory: AccessoryId
+  motion: 'lively' | 'calm' | 'still'
+  effect: 'none' | 'sparkles' | 'golden'
+  chatter: boolean
+  /** highest level whose celebration has been shown */
+  seenLevel: number
+}
 export type AlarmSound = 'bell' | 'chime' | 'digital' | 'soft' | 'none'
 
 export interface Task { id: string; text: string; done: boolean; pomos: number; createdAt: number; doneAt?: number }
@@ -32,14 +60,14 @@ export interface Settings {
   name: string
   logoText: string
   showLogo: boolean
-  greeting: boolean
   hideIdle: boolean
   themes: Record<ViewMode, string>
   customThemes: CustomTheme[]
   dim: number
   streamSound: boolean
-  clock: { format: '12' | '24'; seconds: boolean; ampm: boolean; style: ClockStyle; progress: ProgressStyle }
-  companion: boolean
+  clock: { format: '12' | '24'; seconds: boolean; ampm: boolean }
+  modes: Record<ViewMode, ModeConfig>
+  pet: PetSettings
   timer: TimerSettings
   quotes: { show: boolean; rotate: number; custom: string[]; onlyCustom: boolean }
   spotify: { clientId: string; uri: string; compact: boolean }
@@ -56,18 +84,44 @@ export interface TimerState {
 const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4)
 const mins = (m: number) => Math.round(m * 60_000)
 
+const MODE_BASE: ModeConfig = {
+  clockStyle: 'classic', progress: 'off', companion: 'none', spot: 'beside', size: 'md',
+  greeting: true, quote: true, modeTabs: true, cycle: true, task: true, timerCard: true,
+}
+
+/** Deep-merges partial settings (from storage, the cloud or an import) over a base. */
+export function mergeSettings(base: Settings, inc: Partial<Settings> | undefined): Settings {
+  if (!inc) return base
+  const modes = { ...base.modes }
+  for (const v of ['home', 'focus', 'ambient'] as ViewMode[]) modes[v] = { ...base.modes[v], ...inc.modes?.[v] }
+  return {
+    ...base, ...inc,
+    themes: { ...base.themes, ...inc.themes },
+    clock: { ...base.clock, ...inc.clock },
+    timer: { ...base.timer, ...inc.timer },
+    quotes: { ...base.quotes, ...inc.quotes },
+    spotify: { ...base.spotify, ...inc.spotify },
+    pet: { ...base.pet, ...inc.pet },
+    modes,
+  }
+}
+
 export const defaultSettings: Settings = {
   name: '',
   logoText: 'floe',
   showLogo: true,
-  greeting: true,
   hideIdle: true,
   themes: { home: 'twilight', ambient: 'forest', focus: 'rain' },
   customThemes: [],
   dim: 0.15,
   streamSound: false,
-  clock: { format: '12', seconds: false, ampm: false, style: 'classic', progress: 'ring' },
-  companion: true,
+  clock: { format: '12', seconds: false, ampm: false },
+  modes: {
+    home: { ...MODE_BASE, progress: 'orbit' },
+    focus: { ...MODE_BASE, progress: 'ring', companion: 'tomato' },
+    ambient: { ...MODE_BASE, progress: 'bar', spot: 'left', quote: false },
+  },
+  pet: { accessory: 'none', motion: 'lively', effect: 'none', chatter: true, seenLevel: 1 },
   timer: {
     focus: 25, short: 5, long: 15, longEvery: 4,
     autoBreaks: false, autoFocus: false,
@@ -110,6 +164,8 @@ interface State {
   updateTimerSettings: (patch: Partial<TimerSettings>) => void
   updateClock: (patch: Partial<Settings['clock']>) => void
   updateQuotes: (patch: Partial<Settings['quotes']>) => void
+  updateMode: (view: ViewMode, patch: Partial<ModeConfig>) => void
+  updatePet: (patch: Partial<PetSettings>) => void
   updateSpotify: (patch: Partial<Settings['spotify']>) => void
   setTheme: (view: ViewMode, id: string) => void
   addCustomTheme: (t: Omit<CustomTheme, 'id'>) => string
@@ -193,6 +249,8 @@ export const useStore = create<State>()(
         }),
       updateClock: (patch) => set((s) => ({ settings: { ...s.settings, clock: { ...s.settings.clock, ...patch } } })),
       updateQuotes: (patch) => set((s) => ({ settings: { ...s.settings, quotes: { ...s.settings.quotes, ...patch } } })),
+      updateMode: (view, patch) => set((s) => ({ settings: { ...s.settings, modes: { ...s.settings.modes, [view]: { ...s.settings.modes[view], ...patch } } } })),
+      updatePet: (patch) => set((s) => ({ settings: { ...s.settings, pet: { ...s.settings.pet, ...patch } } })),
       updateSpotify: (patch) => set((s) => ({ settings: { ...s.settings, spotify: { ...s.settings.spotify, ...patch } } })),
       setTheme: (view, id) => set((s) => ({ settings: { ...s.settings, themes: { ...s.settings.themes, [view]: id } } })),
       addCustomTheme: (t) => {
@@ -289,7 +347,7 @@ export const useStore = create<State>()(
         const d = data as Partial<State>
         if (!d.settings) return false
         set({
-          settings: { ...defaultSettings, ...d.settings },
+          settings: mergeSettings(defaultSettings, d.settings),
           tasks: d.tasks ?? [],
           notes: d.notes ?? [],
           sessions: d.sessions ?? [],
@@ -307,11 +365,20 @@ export const useStore = create<State>()(
     }),
     {
       name: 'floe-v1',
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
-        const p = persisted as { settings?: { spotify?: { compact?: boolean } } }
+        const p = persisted as { settings?: Record<string, unknown> & { spotify?: { compact?: boolean } } }
         // v2: compact Spotify player became the default (the tracklist is now a toggle)
         if (version < 2 && p?.settings?.spotify) p.settings.spotify.compact = true
+        // v3: clock style / progress / greeting / companion moved into per-mode settings
+        if (version < 3 && p?.settings) {
+          const old = p.settings as { clock?: { style?: ClockStyle; progress?: string }; greeting?: boolean; companion?: boolean }
+          const home: Partial<ModeConfig> = {}
+          if (old.clock?.style) home.clockStyle = old.clock.style
+          if (old.clock?.progress) home.progress = (old.clock.progress === 'ring' ? 'orbit' : old.clock.progress) as ProgressStyle
+          if (old.greeting === false) home.greeting = false
+          p.settings.modes = { home, focus: old.companion === false ? { companion: 'none' } : {}, ambient: {} }
+        }
         return p as never
       },
       partialize: (s) => ({
@@ -331,15 +398,7 @@ export const useStore = create<State>()(
         return {
           ...current,
           ...p,
-          settings: {
-            ...defaultSettings,
-            ...ps,
-            themes: { ...defaultSettings.themes, ...ps.themes },
-            clock: { ...defaultSettings.clock, ...ps.clock },
-            timer: { ...defaultSettings.timer, ...ps.timer },
-            quotes: { ...defaultSettings.quotes, ...ps.quotes },
-            spotify: { ...defaultSettings.spotify, ...ps.spotify },
-          },
+          settings: mergeSettings(defaultSettings, ps),
         }
       },
     },

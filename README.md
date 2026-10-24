@@ -50,9 +50,11 @@ A pomodoro timer that lives inside slow, moving worlds: hand-drawn live scenes, 
 |---|---|---|
 | 🌲 | **11 live scenes** | Enchanted Forest, Rainy City, Starry Night, Aurora, Winter Cabin, Synthwave, Ocean Sunset, Sakura, Pixel Valley, Pastel Park and Cozy Cat, all drawn live on `<canvas>` (no video files). |
 | 🎨 | **Themes for every mode** | Ambient, Home and Focus each get their own background: scenes, grainy gradients, flat "paper" colors, 24/7 lofi YouTube streams, or your own image / video / YouTube link (uploads stay in IndexedDB). Light themes switch the UI to dark text automatically. |
-| ⏱️ | **8 clock styles** | Classic, 3D Flip, Ring, Analog, Minimal, Pixel, Words ("thirteen to seven") and Poster. |
+| ⏱️ | **8 clock styles, everywhere** | Classic, 3D Flip, Ring, Analog, Minimal, Pixel, Words and Poster, for the Home clock, the Focus countdown and the Ambient timer card. In countdown modes they adapt: Analog becomes a kitchen-timer dial, Words reads "twenty-four minutes left". |
+| 🎛️ | **Every mode customizable** | Per mode: clock style, progress style (Ring, 3D Orbit, Bar, Glow), companion, its position and size, and which pieces show (greeting, quote, tabs, cycle, task, timer card). One click on **Customize** (or `C`). |
 | 🪐 | **Live session progress** | While a session runs, the Home clock shows a 3D tilted orbit ring, a bar or a breathing glow. The color drifts violet → magenta → coral as the session ends (teal → sky on breaks). |
-| 🍅 | **Tomato companion** | A little animated buddy that types on a laptop while you focus and lounges with a mug of tea on breaks. Tomatoes also mark your cycle. |
+| 🐾 | **6 companions** | Tomato, Sprout (grows as you level), Mochi the cat, Kit the fox, Boo the ghost and Bit the robot, each with their own work / break / idle / pause animations, speech bubbles and Lively / Calm / Still motion. |
+| 🏆 | **Levels & rewards** | Earn XP for focus minutes, finished tasks and active days. Level up to unlock companions, accessories (headphones, party hat, flower crown, wizard hat, crown) and effects (sparkle aura, golden glow), with a confetti celebration. Admins can grant XP. |
 | 🎧 | **Spotify** | Embedded player that works for everyone, one-click **Connect Spotify** (OAuth PKCE, Client ID built in, so users never see developer setup), search across Spotify + your playlists, and play/pause/skip on your devices. |
 | 🌧️ | **Sound mixer** | Rain, waves, wind, fireplace, birds and white/pink/brown noise, synthesized in real time with the Web Audio API. |
 | ✅ | **Tasks & notes** | Draggable glass panels. Pin a task to the timer and floe counts the sessions it took. |
@@ -60,7 +62,7 @@ A pomodoro timer that lives inside slow, moving worlds: hand-drawn live scenes, 
 | 💬 | **220+ quotes** | Curated motivational quotes with authors, plus live extras from [QuotesDB](https://quotes-db.vercel.app/) when it's reachable. |
 | 🔐 | **Members only** | `/app` requires an account. New people can sign up, or tap **Ask the owner for an account**: a short form opens WhatsApp (or email) with their name, email, preferred username and reason already written out. |
 | 👤 | **Accounts & sync** | Sign in with **email or username**. Tasks, notes, settings and stats sync across devices via Supabase. Signing out clears the device, so shared computers stay private. |
-| 🛡️ | **Admin dashboard** | `/admin`: live stats & charts, user directory, create accounts (with a one-click **copy credentials + link** button), promote to moderator/admin, suspend, reset passwords, delete. |
+| 🛡️ | **Admin dashboard** | `/admin`: live stats & charts, user directory with levels, create accounts (with a one-click **copy credentials + link** button), grant XP, promote to moderator/admin, suspend, reset passwords, delete. |
 | ✨ | **Landing page** | WebGL shader blob hero, a 3D browser mockup that tilts into view on scroll, a 3D carousel of live scenes, and interactive demos. |
 
 ## Screenshots
@@ -260,6 +262,7 @@ erDiagram
     text display_name
     text role "user | moderator | admin"
     text status "active | suspended"
+    int bonus_xp "granted by admins"
     timestamptz created_at
     timestamptz last_seen
   }
@@ -277,7 +280,7 @@ erDiagram
   }
 ```
 
-SQL lives in [`supabase/schema.sql`](supabase/schema.sql) and [`supabase/002_roles_usernames.sql`](supabase/002_roles_usernames.sql). Edge functions are in [`supabase/functions`](supabase/functions).
+SQL lives in [`supabase/schema.sql`](supabase/schema.sql), [`002_roles_usernames.sql`](supabase/002_roles_usernames.sql) and [`003_xp.sql`](supabase/003_xp.sql). Edge functions are in [`supabase/functions`](supabase/functions).
 
 ## Security model
 
@@ -346,7 +349,7 @@ Without any configuration floe runs fully local: no accounts, everything saved i
 
 **Supabase setup (new project):**
 
-1. Run `supabase/schema.sql`, then `supabase/002_roles_usernames.sql` in the SQL editor.
+1. Run `supabase/schema.sql`, `supabase/002_roles_usernames.sql` and `supabase/003_xp.sql` in the SQL editor.
 2. Deploy the functions: `supabase functions deploy admin` and `supabase functions deploy login --no-verify-jwt`.
 3. Auth → URL configuration: set the Site URL to `https://<your-site>/app` and add `https://<your-site>/**` and `http://127.0.0.1:5173/**` to the redirect URLs.
 4. Create your first account, then make it an admin: `update profiles set role = 'admin' where username = '<you>';`
@@ -385,7 +388,9 @@ floe/
 │  ├─ themes.ts             theme catalog (scenes, gradients, paper, streams)
 │  ├─ scenes/               11 canvas scenes + helpers
 │  ├─ components/
-│  │  ├─ clocks.tsx         8 clock styles, session progress, companion
+│  │  ├─ clocks.tsx         8 time-display styles, progress frames
+│  │  ├─ companions.tsx     6 companions, accessories, effects
+│  │  ├─ LevelUp.tsx        level-up celebration
 │  │  ├─ views.tsx          Home, Ambient timer card, Focus
 │  │  ├─ Background.tsx     cross-fading theme renderer
 │  │  ├─ panels/            Tasks, Notes, Music (Spotify + sounds)
@@ -393,7 +398,7 @@ floe/
 │  │  └─ AuthForm.tsx
 │  ├─ admin/                dashboard, charts
 │  ├─ landing/              landing page + Three.js hero
-│  ├─ lib/                  audio, spotify, supabase, account sync, quotes, media
+│  ├─ lib/                  audio, spotify, supabase, account sync, levels/XP, quotes, media
 │  └─ styles/
 └─ docs/screenshots/
 ```
@@ -406,7 +411,8 @@ floe/
 | `R` | Reset | `M` | Music |
 | `N` | Next session | `J` | Notes |
 | `1` `2` `3` | Ambient · Home · Focus | `F` | Fullscreen |
-| `,` | Settings | `Esc` | Close |
+| `,` | Settings | `C` | Customize this mode |
+| `Esc` | Close | | |
 
 ---
 

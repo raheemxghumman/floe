@@ -1,11 +1,15 @@
-import { ChartColumn, CircleUser, Clock, Music, Palette, Quote, Rocket, Sparkles, Timer, X } from 'lucide-react'
+import { ChartColumn, CircleUser, Clock, Music, Palette, PawPrint, Quote, Rocket, SlidersHorizontal, Sparkles, Timer, X } from 'lucide-react'
 import { useStore, type SettingsSection } from '../../store'
 import { ThemesSection } from './ThemesSection'
 import { StatsSection } from './StatsSection'
+import { ModesSection } from './ModesSection'
+import { CompanionsSection } from './CompanionsSection'
 import { AboutSection, AccountSection, ClockSection, ExtrasSection, MusicSection, QuotesSection, TimerSection } from './sections'
 
 const NAV: { id: SettingsSection; label: string; icon: typeof Palette; badge?: string }[] = [
   { id: 'themes', label: 'Themes', icon: Palette, badge: 'LIVE' },
+  { id: 'modes', label: 'Modes', icon: SlidersHorizontal },
+  { id: 'companions', label: 'Companions', icon: PawPrint, badge: 'NEW' },
   { id: 'clock', label: 'Clock', icon: Clock },
   { id: 'timer', label: 'Focus Timer', icon: Timer },
   { id: 'stats', label: 'Stats', icon: ChartColumn },
@@ -17,7 +21,7 @@ const NAV: { id: SettingsSection; label: string; icon: typeof Palette; badge?: s
 ]
 
 const BODY: Record<SettingsSection, () => JSX.Element> = {
-  themes: ThemesSection, clock: ClockSection, timer: TimerSection, stats: StatsSection, quotes: QuotesSection,
+  themes: ThemesSection, modes: ModesSection, companions: CompanionsSection, clock: ClockSection, timer: TimerSection, stats: StatsSection, quotes: QuotesSection,
   music: MusicSection, extras: ExtrasSection, account: AccountSection, about: AboutSection,
 }
 

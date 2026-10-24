@@ -32,7 +32,7 @@ export function useTimerEngine() {
         const finished = complete()
         playAlarm(settings.timer.sound, settings.timer.volume)
         const [title, body] = COMPLETE_MSG[finished]
-        toast(title)
+        toast(finished === 'focus' ? `${title} · +${Math.round(settings.timer.focus)} XP` : title)
         if (settings.timer.notify && 'Notification' in window && Notification.permission === 'granted') {
           try { new Notification(title, { body, icon: '/favicon.svg', silent: true }) } catch { /* unsupported */ }
         }
@@ -71,6 +71,7 @@ export function useShortcuts() {
         case 'm': s.togglePanel('music'); break
         case 'j': s.togglePanel('notes'); break
         case ',': s.settingsOpen ? s.closeSettings() : s.openSettings(); break
+        case 'c': s.settingsOpen ? s.closeSettings() : s.openSettings('modes'); break
         case 'escape':
           if (s.settingsOpen) s.closeSettings()
           else s.closePanels()

@@ -11,6 +11,10 @@ import { AuthForm } from '../components/AuthForm'
 import { Toasts } from '../components/chrome'
 import { toast } from '../hooks'
 import { BarChart, LineChart, type Point } from './charts'
+import { levelFor } from '../lib/levels'
+
+/** Admins are always 'infinite'; everyone else is levelled from their XP. */
+const xpLabel = (u: Pick<AdminUser, 'role' | 'xp'>) => (u.role === 'admin' ? '∞' : `Lv ${levelFor(Number(u.xp))} · ${num(Number(u.xp))} XP`)
 
 // the admin page must never merge its browser's local floe data into the admin's cloud copy
 initAccount.syncOnSignIn = false
@@ -28,6 +32,7 @@ interface Overview {
 interface AdminUser {
   id: string; email: string; username: string | null; display_name: string | null; role: Role; status: 'active' | 'suspended'
   created_at: string; last_seen: string; focus_minutes: number; sessions: number; minutes_7d: number; tasks_completed: number
+  bonus_xp: number; xp: number
 }
 
 /* ------------------------------------------------------------ utils */
@@ -171,6 +176,41 @@ function CreateUser({ onClose, onCreated }: { onClose: () => void; onCreated: ()
 
 /* ------------------------------------------------------- user detail */
 
+function XpCard({ u, isAdmin, onChanged }: { u: AdminUser; isAdmin: boolean; onChanged: () => void }) {
+  const [amount, setAmount] = useState('')
+  const [busy, setBusy] = useState(false)
+  const grant = async (n: number) => {
+    if (!n) return
+    setBusy(true)
+    try {
+      await callFn('admin', { action: 'grant_xp', userId: u.id, amount: n })
+      toast(`${n > 0 ? 'Gave' : 'Removed'} ${num(Math.abs(n))} XP ${n > 0 ? 'to' : 'from'} @${u.username}`)
+      setAmount(''); onChanged()
+    } catch (e) { toast((e as Error).message) } finally { setBusy(false) }
+  }
+  const infinite = u.role === 'admin'
+  return (
+    <div className="adm-card flat xp-card">
+      <h4>Companion level</h4>
+      <div className="xp-now">
+        <strong>{infinite ? '∞' : `Level ${levelFor(Number(u.xp))}`}</strong>
+        <span className="muted small">{infinite ? 'Admins have everything unlocked' : `${num(Number(u.xp))} XP total · ${num(u.bonus_xp)} granted by admins`}</span>
+      </div>
+      {isAdmin && !infinite && (
+        <>
+          <div className="row-inline wrap">
+            {[50, 250, 1000, 5000].map((n) => <button key={n} className="btn sm ghost" disabled={busy} onClick={() => void grant(n)}>+{num(n)}</button>)}
+          </div>
+          <form className="inline-form" onSubmit={(e) => { e.preventDefault(); void grant(Math.trunc(Number(amount))) }}>
+            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Custom amount (negative removes)" />
+            <button className="btn sm" disabled={busy || !Number(amount)}>Apply</button>
+          </form>
+        </>
+      )}
+    </div>
+  )
+}
+
 function UserDetail({ u, me, onClose, onChanged, onAction }: {
   u: AdminUser; me: { id: string; role: Role }; onClose: () => void; onChanged: () => void
   onAction: (a: 'suspend' | 'unsuspend' | 'delete' | 'reset', u: AdminUser) => void
@@ -206,6 +246,7 @@ function UserDetail({ u, me, onClose, onChanged, onAction }: {
         <div><span>Sessions</span><strong>{num(u.sessions)}</strong></div>
         <div><span>Tasks done</span><strong>{num(u.tasks_completed)}</strong></div>
       </div>
+      <XpCard u={u} isAdmin={isAdmin} onChanged={onChanged} />
       <div className="adm-card flat">
         <h4>Focus, last 30 days</h4>
         {daily ? <BarChart data={daily} fmt={hrs} /> : <div className="sp-loading"><span /></div>}
@@ -336,7 +377,7 @@ function UsersPage({ users, me, onOpen, onCreate, onAction, onRole }: {
       <div className="adm-table-wrap">
         <table className="adm-table">
           <thead>
-            <tr><th>User</th><th>Role</th><th>Status</th><th className="r">Focus</th><th className="r">7 days</th><th className="r">Sessions</th><th className="r">Tasks</th><th>Joined</th><th>Last seen</th><th /></tr>
+            <tr><th>User</th><th>Role</th><th>Status</th><th className="r">Focus</th><th className="r">7 days</th><th className="r">Sessions</th><th className="r">Tasks</th><th>Level</th><th>Joined</th><th>Last seen</th><th /></tr>
           </thead>
           <tbody>
             {shown.map((u) => {
@@ -358,6 +399,7 @@ function UsersPage({ users, me, onOpen, onCreate, onAction, onRole }: {
                   <td className="r">{hrs(Number(u.minutes_7d))}</td>
                   <td className="r">{num(u.sessions)}</td>
                   <td className="r">{num(u.tasks_completed)}</td>
+                  <td><span className={`xp-pill ${u.role === 'admin' ? 'inf' : ''}`}>{xpLabel(u)}</span></td>
                   <td>{new Date(u.created_at).toLocaleDateString()}</td>
                   <td>{rel(u.last_seen)}</td>
                   <td className="r" onClick={(e) => e.stopPropagation()}>
@@ -380,7 +422,7 @@ function UsersPage({ users, me, onOpen, onCreate, onAction, onRole }: {
                 </tr>
               )
             })}
-            {!shown.length && <tr><td colSpan={10} className="adm-empty">No users match.</td></tr>}
+            {!shown.length && <tr><td colSpan={11} className="adm-empty">No users match.</td></tr>}
           </tbody>
         </table>
       </div>

@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       ? (await sb.from('profiles').select('role').eq('id', target).single()).data?.role as string | undefined
       : undefined
     if (target && !targetRole) return json({ error: 'User not found.' }, 404)
-    if (target && target === caller.id && action !== 'reset_password') return json({ error: 'You can’t do that to your own account.' }, 400)
+    if (target && target === caller.id && action !== 'reset_password' && action !== 'grant_xp') return json({ error: 'You can’t do that to your own account.' }, 400)
     const needAdmin = () => (isAdmin ? null : json({ error: 'Only admins can do that.' }, 403))
 
     switch (action) {
@@ -95,6 +95,16 @@ Deno.serve(async (req) => {
         if (password.length < 8) return json({ error: 'Password must be at least 8 characters.' }, 400)
         const { error } = await sb.auth.admin.updateUserById(target ?? caller.id, { password })
         return error ? json({ error: error.message }, 400) : json({ ok: true })
+      }
+
+      case 'grant_xp': {
+        const denied = needAdmin(); if (denied) return denied
+        const amount = Math.trunc(Number(body.amount))
+        if (!Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 1_000_000) return json({ error: 'Enter an amount between -1,000,000 and 1,000,000.' }, 400)
+        const { data: row } = await sb.from('profiles').select('bonus_xp').eq('id', target ?? caller.id).single()
+        const bonus = Math.min(100_000_000, Math.max(0, (row?.bonus_xp ?? 0) + amount))
+        const { error } = await sb.from('profiles').update({ bonus_xp: bonus }).eq('id', target ?? caller.id)
+        return error ? json({ error: error.message }, 400) : json({ ok: true, bonus_xp: bonus })
       }
 
       default:

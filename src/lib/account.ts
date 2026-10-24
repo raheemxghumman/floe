@@ -3,7 +3,7 @@
 import { create } from 'zustand'
 import type { User } from '@supabase/supabase-js'
 import { callFn, supabase, type Profile } from './supabase'
-import { useStore, type Note, type Session, type Settings, type Task } from '../store'
+import { mergeSettings, useStore, type Note, type Session, type Settings, type Task } from '../store'
 import { logout as spotifyLogout } from './spotify'
 
 type SyncState = 'off' | 'syncing' | 'synced' | 'error'
@@ -126,14 +126,11 @@ function mergeInto(remote: CloudData | null, remoteSessions: Session[], remoteAt
   for (const x of [...remoteSessions, ...s.sessions]) sessions.set(sessionKey(x), x)
   const rs = remote?.settings && remoteAt >= localEditAt() ? remote.settings : undefined
   useStore.setState({
-    settings: rs ? {
-      ...s.settings, ...rs,
-      themes: { ...s.settings.themes, ...rs.themes },
-      clock: { ...s.settings.clock, ...rs.clock },
-      timer: { ...s.settings.timer, ...rs.timer },
-      quotes: { ...s.settings.quotes, ...rs.quotes },
-      spotify: { ...s.settings.spotify, ...rs.spotify, clientId: s.settings.spotify.clientId },
-    } : s.settings,
+    settings: rs ? (() => {
+      const merged = mergeSettings(s.settings, rs)
+      // never adopt a stale celebration marker from the cloud that would hide a level-up
+      return { ...merged, spotify: { ...merged.spotify, clientId: s.settings.spotify.clientId }, pet: { ...merged.pet, seenLevel: Math.max(merged.pet.seenLevel, s.settings.pet.seenLevel) } }
+    })() : s.settings,
     tasks: [...tasks.values()].sort((a, b) => a.createdAt - b.createdAt),
     notes: [...notes.values()].sort((a, b) => b.updatedAt - a.updatedAt),
     sessions: [...sessions.values()].sort((a, b) => a.at - b.at),
@@ -190,7 +187,8 @@ async function startSync(user: User) {
     clearTimeout(pushTimer)
     pushTimer = window.setTimeout(() => void push(user.id), 2500)
   })
-  const seen = () => void supabase!.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', user.id)
+  // also re-reads the profile so XP granted by an admin shows up without signing in again
+  const seen = () => void supabase!.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', user.id).then(() => loadProfile(user.id))
   seen()
   seenTimer = window.setInterval(seen, 5 * 60_000)
 }

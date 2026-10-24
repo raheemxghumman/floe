@@ -1,36 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pause, Play, Plus, RotateCcw, SkipForward, Target } from 'lucide-react'
-import { durationOf, fmtTimer, MODE_LABEL, remainingOf, useNow, useStore, type TimerMode } from '../store'
+import { durationOf, fmtTimer, MODE_LABEL, useNow, useStore, type TimerMode, type ViewMode } from '../store'
 import { greeting, pickQuote } from '../lib/words'
 import { extraQuotes, QUOTES, refreshExtraQuotes, type Quote } from '../lib/quotes'
-import { ClockStage, Companion, RollingText, sessionColor, TomatoDots } from './clocks'
+import { ProgressFrame, sessionColor, TimeDisplay, TomatoDots, useSession } from './clocks'
+import { Companion } from './companions'
 
 export { Clock, FlipCard, RollingText } from './clocks'
-
-/* --------------------------------------------------------------- shared */
-
-function useTimerView() {
-  const timer = useStore((s) => s.timer)
-  const t = useStore((s) => s.settings.timer)
-  const now = useNow((s) => s.now)
-  const left = remainingOf(timer, now)
-  const total = durationOf(timer.mode, t)
-  return { timer, left, total, progress: total ? 1 - left / total : 0 }
-}
 
 /* ----------------------------------------------------------------- home */
 
 export function HomeView({ active }: { active: boolean }) {
   const name = useStore((s) => s.settings.name)
-  const show = useStore((s) => s.settings.greeting)
+  const m = useStore((s) => s.settings.modes.home)
   const setView = useStore((s) => s.setView)
   const minute = useNow((s) => Math.floor(s.now / 60_000))
   const [l1, l2] = greeting(name, new Date(minute * 60_000))
-  const { timer, left } = useTimerView()
+  const { timer, left, active: inSession } = useSession()
 
   return (
     <section className={`view view-home ${active ? 'active' : ''}`}>
-      {show && (
+      {m.greeting && (
         <h2 className="greet" key={l1}>
           {`${l1}\n${l2}`.split('\n').map((line, li) => (
             <span className="greet-line" key={li}>
@@ -41,7 +31,12 @@ export function HomeView({ active }: { active: boolean }) {
           ))}
         </h2>
       )}
-      <ClockStage />
+      <div className="stage stage-home tilt">
+        <ProgressFrame kind={m.progress} clockStyle={m.clockStyle} show={inSession}
+          extra={m.spot === 'beside' && <Companion id={m.companion} spot="beside" size={m.size} />}>
+          <TimeDisplay style={m.clockStyle} kind="clock" />
+        </ProgressFrame>
+      </div>
       {timer.running && (
         <button className="home-pill" onClick={() => setView('focus')}>
           <span className="pulse-dot" />
@@ -52,8 +47,9 @@ export function HomeView({ active }: { active: boolean }) {
   )
 }
 
-export function QuoteBlock({ active }: { active: boolean }) {
+export function QuoteBlock({ view }: { view: ViewMode }) {
   const q = useStore((s) => s.settings.quotes)
+  const show = useStore((s) => (view === 'home' || view === 'ambient') && s.settings.modes[view].quote)
   const slot = useNow((s) => Math.floor(s.now / 60_000))
   const [extra, setExtra] = useState<Quote[]>(() => extraQuotes())
   useEffect(() => { void refreshExtraQuotes().then(() => setExtra(extraQuotes())) }, [])
@@ -64,22 +60,34 @@ export function QuoteBlock({ active }: { active: boolean }) {
   const quote = pickQuote(list, q.rotate, slot * 60_000)
   if (!q.show || !quote) return null
   return (
-    <blockquote className={`quote ${active ? 'active' : ''}`} key={quote.text}>
+    <blockquote className={`quote ${show ? 'active' : ''}`} key={quote.text}>
       <span>“{quote.text}”</span>
       {quote.author && <cite>{quote.author}</cite>}
     </blockquote>
   )
 }
 
+/** Companions placed in a screen corner, rendered outside the views so nothing transforms them. */
+export function CornerCompanion({ view }: { view: ViewMode }) {
+  const m = useStore((s) => s.settings.modes[view])
+  if (m.spot === 'beside' || m.companion === 'none') return null
+  return <Companion key={view} id={m.companion} spot={m.spot} size={m.size} />
+}
+
 /* -------------------------------------------------------------- ambient */
 
 export function TimerCard({ active }: { active: boolean }) {
-  const { timer, left, progress } = useTimerView()
+  const { timer, progress, mode } = useSession()
+  const m = useStore((s) => s.settings.modes.ambient)
   const { toggle, reset, skip } = useStore.getState()
+  const show = active && m.timerCard
   return (
-    <div className={`timer-card ${active ? 'active' : ''} ${timer.running ? 'running' : ''}`}>
+    <div
+      className={`timer-card ${show ? 'active' : ''} ${timer.running ? 'running' : ''} prog-${m.progress} style-${m.clockStyle}`}
+      style={{ ['--sess' as string]: sessionColor(mode, progress) }}
+    >
       <div className="tc-mode">{MODE_LABEL[timer.mode]}</div>
-      <div className="tc-time"><RollingText text={fmtTimer(left)} /></div>
+      <div className="tc-time"><TimeDisplay style={m.clockStyle} kind="timer" /></div>
       <div className="tc-controls">
         <button className="icon-btn ghost sm" onClick={reset} aria-label="Reset"><RotateCcw size={16} /></button>
         <button className="icon-btn ghost play" onClick={toggle} aria-label={timer.running ? 'Pause' : 'Start'}>
@@ -87,7 +95,8 @@ export function TimerCard({ active }: { active: boolean }) {
         </button>
         <button className="icon-btn ghost sm" onClick={skip} aria-label="Skip"><SkipForward size={16} /></button>
       </div>
-      <div className="tc-progress"><div style={{ transform: `scaleX(${progress})` }} /></div>
+      {m.progress === 'bar' && <div className="tc-progress"><div style={{ transform: `scaleX(${progress})` }} /></div>}
+      {m.spot === 'beside' && <Companion id={m.companion} spot="beside" size={m.size} />}
     </div>
   )
 }
@@ -97,32 +106,29 @@ export function TimerCard({ active }: { active: boolean }) {
 const MODES: TimerMode[] = ['focus', 'short', 'long']
 
 export function FocusView({ active }: { active: boolean }) {
-  const { timer, left, progress } = useTimerView()
+  const { timer, left, progress } = useSession()
+  const m = useStore((s) => s.settings.modes.focus)
   const longEvery = useStore((s) => s.settings.timer.longEvery)
-  const companion = useStore((s) => s.settings.companion)
   const task = useStore((s) => s.tasks.find((t) => t.id === s.activeTaskId))
   const { toggle, reset, skip, setTimerMode, togglePanel } = useStore.getState()
   const idx = MODES.indexOf(timer.mode)
   const done = timer.cycle % longEvery
-  const R = 46, C = 2 * Math.PI * R
-  const knob = progress * Math.PI * 2 - Math.PI / 2
 
   return (
     <section className={`view view-focus ${active ? 'active' : ''} mode-${timer.mode}`} style={{ ['--sess' as string]: sessionColor(timer.mode, progress) }}>
-      <div className="mode-tabs" style={{ ['--i' as string]: idx }}>
-        <span className="mode-ind" />
-        {MODES.map((m) => (
-          <button key={m} className={m === timer.mode ? 'on' : ''} onClick={() => setTimerMode(m)}>{MODE_LABEL[m]}</button>
-        ))}
-      </div>
-      <div className="focus-stage tilt">
-        <svg className="focus-ring" viewBox="0 0 100 100" aria-hidden>
-          <circle cx="50" cy="50" r={R} className="ring-track" />
-          <circle cx="50" cy="50" r={R} className="ring-fill" strokeDasharray={C} strokeDashoffset={C * (1 - progress)} />
-          {progress > 0.001 && <circle cx={50 + Math.cos(knob + Math.PI / 2) * R} cy={50 + Math.sin(knob + Math.PI / 2) * R} r={1.8} className="ring-knob" />}
-        </svg>
-        <div className="focus-time"><RollingText text={fmtTimer(left)} /></div>
-        {companion && <Companion />}
+      {m.modeTabs && (
+        <div className="mode-tabs" style={{ ['--i' as string]: idx }}>
+          <span className="mode-ind" />
+          {MODES.map((x) => (
+            <button key={x} className={x === timer.mode ? 'on' : ''} onClick={() => setTimerMode(x)}>{MODE_LABEL[x]}</button>
+          ))}
+        </div>
+      )}
+      <div className={`stage stage-focus tilt prog-${m.progress}`}>
+        <ProgressFrame kind={m.progress} clockStyle={m.clockStyle} show
+          extra={m.spot === 'beside' && <Companion id={m.companion} spot="beside" size={m.size} />}>
+          <TimeDisplay style={m.clockStyle} kind="timer" />
+        </ProgressFrame>
       </div>
       <div className="focus-controls">
         <button className="icon-btn glass" onClick={reset} aria-label="Reset"><RotateCcw size={18} /></button>
@@ -131,10 +137,12 @@ export function FocusView({ active }: { active: boolean }) {
         </button>
         <button className="icon-btn glass" onClick={skip} aria-label="Skip"><SkipForward size={18} /></button>
       </div>
-      <TomatoDots total={longEvery} done={done} current={timer.mode === 'focus' ? progress : 0} />
-      <button className="focus-task" onClick={() => togglePanel('tasks')}>
-        {task ? <><Target size={15} /> {task.text}</> : <><Plus size={15} /> Pick a task to focus on</>}
-      </button>
+      {m.cycle && <TomatoDots total={longEvery} done={done} current={timer.mode === 'focus' ? progress : 0} />}
+      {m.task && (
+        <button className="focus-task" onClick={() => togglePanel('tasks')}>
+          {task ? <><Target size={15} /> {task.text}</> : <><Plus size={15} /> Pick a task to focus on</>}
+        </button>
+      )}
     </section>
   )
 }

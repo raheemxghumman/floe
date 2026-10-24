@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Cloud, House, Lightbulb, ListTodo, Maximize2, Minimize2, Music, PenLine, Settings, UserRound } from 'lucide-react'
+import { Cloud, House, Lightbulb, ListTodo, Maximize2, Minimize2, Music, PenLine, Settings, SlidersHorizontal, UserRound } from 'lucide-react'
 import { useAccount } from '../lib/account'
 import { cloudEnabled } from '../lib/supabase'
 import { useStore, type PanelId, type ViewMode } from '../store'
@@ -65,6 +65,7 @@ export function Toolbar() {
   const panels = useStore((s) => s.panels)
   const toggle = useStore((s) => s.togglePanel)
   const pending = useStore((s) => s.tasks.filter((t) => !t.done).length)
+  const openSettings = useStore((s) => s.openSettings)
   return (
     <nav className="toolbar" aria-label="Tools">
       {TOOLS.map(({ id, label, icon: Icon, key }) => (
@@ -73,6 +74,9 @@ export function Toolbar() {
           {id === 'tasks' && pending > 0 && <span className="badge">{pending}</span>}
         </button>
       ))}
+      <button className="sq-btn" onClick={() => openSettings('modes')} aria-label="Customize this mode" data-tip="Customize · C">
+        <SlidersHorizontal size={17} />
+      </button>
     </nav>
   )
 }

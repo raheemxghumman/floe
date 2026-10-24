@@ -3,6 +3,7 @@ import './styles/app.css'
 import './styles/clocks.css'
 import './styles/themes.css'
 import './styles/gate.css'
+import './styles/pets.css'
 import { useStore } from './store'
 import { toast, useIdle, useParallax, useShortcuts, useTimerEngine } from './hooks'
 import { handleRedirect } from './lib/spotify'
@@ -11,7 +12,8 @@ import { cloudEnabled } from './lib/supabase'
 import { AuthGate } from './components/AuthGate'
 import { resolveTheme } from './themes'
 import { Background } from './components/Background'
-import { FocusView, HomeView, QuoteBlock, TimerCard } from './components/views'
+import { CornerCompanion, FocusView, HomeView, QuoteBlock, TimerCard } from './components/views'
+import { LevelUp } from './components/LevelUp'
 import { Dock, Toasts, Toolbar } from './components/chrome'
 import { TasksPanel } from './components/panels/TasksPanel'
 import { NotesPanel } from './components/panels/NotesPanel'
@@ -19,6 +21,8 @@ import { MusicPanel } from './components/panels/MusicPanel'
 import { SettingsDrawer } from './components/settings/SettingsDrawer'
 
 initAccount()
+// dev-only handle for automated UI tests; stripped from production builds
+if (import.meta.env.DEV) (window as unknown as { __floe: typeof useStore }).__floe = useStore
 
 export default function App() {
   useTimerEngine()
@@ -61,7 +65,7 @@ export default function App() {
       <div className="ui">
         {showLogo && <a className="logo" href="/" aria-label="Home page">{logoText || 'floe'}</a>}
         <div className="top-right">
-          <QuoteBlock active={view === 'home'} />
+          <QuoteBlock view={view} />
           <TimerCard active={view === 'ambient'} />
         </div>
         <HomeView active={view === 'home'} />
@@ -71,7 +75,9 @@ export default function App() {
         <TasksPanel />
         <NotesPanel />
         <MusicPanel />
+        <CornerCompanion view={view} />
       </div>
+      <LevelUp />
       <SettingsDrawer />
       <Toasts />
     </div>

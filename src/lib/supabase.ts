@@ -18,6 +18,7 @@ export interface Profile {
   display_name: string | null
   role: Role
   status: 'active' | 'suspended'
+  bonus_xp: number
   created_at: string
   last_seen: string
 }

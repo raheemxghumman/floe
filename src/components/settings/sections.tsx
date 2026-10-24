@@ -10,54 +10,24 @@ import { toast } from '../../hooks'
 import { QUOTES } from '../../lib/quotes'
 import { Row, Section, Seg, Stepper, Toggle } from './controls'
 import { SpotifyGlyph } from '../panels/MusicPanel'
-import { TiltCard } from './ThemesSection'
-import { CLOCK_STYLES } from '../clocks'
 
 /* --------------------------------------------------------------- clock */
 
-const STYLE_PREVIEW: Record<string, JSX.Element> = {
-  classic: <span className="cs-classic">5:21</span>,
-  flip: <span className="cs-flip"><b>05</b><b>21</b></span>,
-  ring: <span className="cs-ring"><i /><b>5:21</b></span>,
-  analog: <span className="cs-analog"><i className="h" /><i className="m" /></span>,
-  minimal: <span className="cs-minimal">5:21</span>,
-  pixel: <span className="cs-pixel">05:21</span>,
-  words: <span className="cs-words">twenty-one<br />past five</span>,
-  poster: <span className="cs-poster"><b>05</b><b>21</b></span>,
-}
-
 export function ClockSection() {
   const c = useStore((s) => s.settings.clock)
-  const companion = useStore((s) => s.settings.companion)
   const updateClock = useStore((s) => s.updateClock)
-  const update = useStore((s) => s.update)
+  const setSection = useStore((s) => s.setSection)
   return (
-    <>
-      <Section title="Clock" sub="How time looks on your Home screen.">
-        <div className="clock-styles">
-          {CLOCK_STYLES.map(({ v, label }) => (
-            <TiltCard key={v} selected={c.style === v} onClick={() => updateClock({ style: v })} className="clock-style">
-              {STYLE_PREVIEW[v]}
-              <span className="theme-name">{label}</span>
-            </TiltCard>
-          ))}
-        </div>
-        <Row label="Time format">
-          <Seg value={c.format} onChange={(v) => updateClock({ format: v })} options={[{ v: '12', label: '12h' }, { v: '24', label: '24h' }]} />
-        </Row>
-        <Row label="Show seconds"><Toggle on={c.seconds} onChange={(v) => updateClock({ seconds: v })} /></Row>
-        {c.format === '12' && <Row label="Show AM / PM"><Toggle on={c.ampm} onChange={(v) => updateClock({ ampm: v })} /></Row>}
-      </Section>
-      <Section title="Session progress" sub="While a session runs, the Home clock shows how far along you are. The color shifts as you near the end.">
-        <Row label="Style" hint={c.style === 'ring' ? 'The Ring clock already shows progress' : undefined}>
-          <Seg value={c.progress} onChange={(v) => updateClock({ progress: v })}
-            options={[{ v: 'ring', label: 'Orbit' }, { v: 'bar', label: 'Bar' }, { v: 'glow', label: 'Glow' }, { v: 'off', label: 'Off' }]} />
-        </Row>
-        <Row label="Tomato companion" hint="A little buddy in Focus mode who works while you work and relaxes on breaks">
-          <Toggle on={companion} onChange={(v) => update({ companion: v })} />
-        </Row>
-      </Section>
-    </>
+    <Section title="Clock" sub="How time is written everywhere in floe.">
+      <Row label="Time format">
+        <Seg value={c.format} onChange={(v) => updateClock({ format: v })} options={[{ v: '12', label: '12h' }, { v: '24', label: '24h' }]} />
+      </Row>
+      <Row label="Show seconds"><Toggle on={c.seconds} onChange={(v) => updateClock({ seconds: v })} /></Row>
+      {c.format === '12' && <Row label="Show AM / PM"><Toggle on={c.ampm} onChange={(v) => updateClock({ ampm: v })} /></Row>}
+      <Row label="Clock & timer styles" hint="Each mode has its own style, progress and companion">
+        <button className="btn sm ghost" onClick={() => setSection('modes')}>Customize modes</button>
+      </Row>
+    </Section>
   )
 }
 
@@ -230,7 +200,6 @@ export function ExtrasSection() {
   return (
     <>
       <Section title="Extras">
-        <Row label="Greeting" hint="“Good morning, …” on the Home screen"><Toggle on={s.greeting} onChange={(v) => update({ greeting: v })} /></Row>
         <Row label="Hide UI when idle" hint="In Ambient mode, controls fade out after a few seconds"><Toggle on={s.hideIdle} onChange={(v) => update({ hideIdle: v })} /></Row>
         <Row label="Show logo"><Toggle on={s.showLogo} onChange={(v) => update({ showLogo: v })} /></Row>
         <Row label="Logo text">
