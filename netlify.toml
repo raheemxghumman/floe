@@ -1,0 +1,13 @@
+# Used if the site is ever connected to Git for automatic builds.
+# Set VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (and optionally VITE_SPOTIFY_CLIENT_ID) in Site settings → Environment variables.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

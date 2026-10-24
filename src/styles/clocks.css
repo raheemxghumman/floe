@@ -1,0 +1,163 @@
+/* ================================================================ CLOCK STYLE PREVIEWS */
+
+.clock-styles { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 12px !important; }
+.clock-style .cs-classic { font-size: 38px; letter-spacing: -0.04em; }
+.clock-style .cs-flip b { padding: 3px 6px; border-radius: 6px; font-size: 24px; }
+.cs-ring { position: relative; width: 70px; height: 70px; display: grid; place-items: center; transform: translateZ(30px); }
+.cs-ring i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.18); border-top-color: #ff8a7a; border-right-color: #c084fc; }
+.cs-ring b { font-size: 17px; font-weight: 700; }
+.cs-analog { position: relative; width: 66px; height: 66px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.6); transform: translateZ(30px); }
+.cs-analog i { position: absolute; left: 50%; bottom: 50%; width: 3px; margin-left: -1.5px; border-radius: 2px; background: #fff; transform-origin: 50% 100%; }
+.cs-analog .h { height: 18px; transform: rotate(150deg); }
+.cs-analog .m { height: 26px; transform: rotate(126deg); background: #ff8a7a; }
+.cs-minimal { font-weight: 200; font-size: 40px; letter-spacing: -0.04em; transform: translateZ(30px); }
+.cs-pixel { font-family: 'VT323', monospace; font-size: 40px; color: #b8ffcf; text-shadow: 0 0 10px rgba(120, 255, 170, 0.6); transform: translateZ(30px); }
+.cs-words { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; line-height: 1; text-align: center; transform: translateZ(30px); }
+.cs-poster { display: flex; flex-direction: column; line-height: 0.82; transform: translateZ(30px); }
+.cs-poster b { font-family: var(--font-display); font-weight: 800; font-variation-settings: 'wdth' 75; font-size: 30px; }
+.cs-poster b + b { color: transparent; -webkit-text-stroke: 1.4px #fff; }
+
+/* ================================================================ SESSION PROGRESS */
+
+.clock-stage { position: relative; display: grid; place-items: center; }
+.clock-stage > :not(.orbit):not(.sess-glow) { position: relative; z-index: 1; }
+
+/* orbit: the progress ring tilted into 3D around the clock, like a planet ring */
+.orbit {
+  position: absolute; left: 50%; top: 52%; width: min(135%, 600px); min-width: 360px; aspect-ratio: 1; pointer-events: none;
+  transform: translate(-50%, -50%) perspective(1100px) rotateX(calc(70deg + var(--my, 0) * 6deg)) rotateZ(calc(var(--mx, 0) * 8deg));
+  animation: orbitIn 1s var(--ease-out) both;
+}
+@keyframes orbitIn { from { opacity: 0; transform: translate(-50%, -50%) perspective(1100px) rotateX(70deg) scale(0.6); } }
+.orbit svg { width: 100%; height: 100%; overflow: visible; }
+.orbit-track { fill: none; stroke: rgba(255, 255, 255, 0.14); stroke-width: 0.5; }
+.orbit-fill { fill: none; stroke: var(--sess); stroke-width: 1.3; stroke-linecap: round; transition: stroke-dashoffset 0.3s linear, stroke 1s; filter: drop-shadow(0 0 2px var(--sess)); }
+.orbit-knob { fill: #fff; filter: drop-shadow(0 0 3px var(--sess)) drop-shadow(0 0 6px var(--sess)); }
+
+.sess-glow {
+  position: absolute; left: 50%; top: 50%; width: 150%; aspect-ratio: 1; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, var(--sess) 0%, transparent 62%); opacity: calc(0.22 + var(--p) * 0.35); filter: blur(30px);
+  transform: translate(-50%, -50%); animation: breatheGlow calc(6s - var(--p) * 3.5s) ease-in-out infinite;
+}
+@keyframes breatheGlow { 50% { transform: translate(-50%, -50%) scale(1.12); } }
+.prog-glow .clock, .prog-glow .clock-minimal, .prog-glow .clock-poster { text-shadow: 0 0 40px var(--sess); }
+
+.sess-bar { margin-top: 18px; width: min(380px, 70vw); display: flex; flex-direction: column; align-items: center; gap: 8px; animation: rise 0.6s var(--ease-out) both; }
+.sess-bar-track { width: 100%; height: 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.sess-bar-track div { height: 100%; border-radius: 6px; background: linear-gradient(90deg, hsl(265 90% 66%), var(--sess)); transform-origin: 0 50%; transition: transform 0.3s linear; box-shadow: 0 0 12px var(--sess); }
+.sess-bar span { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; opacity: 0.85; }
+
+/* ================================================================ CLOCKS */
+
+.ring-clock { position: relative; width: clamp(280px, 42vh, 430px); aspect-ratio: 1; display: grid; place-items: center; }
+.ring-clock svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ring-clock .tick { stroke: rgba(255, 255, 255, 0.28); stroke-width: 0.35; }
+.ring-clock .tick.major { stroke: rgba(255, 255, 255, 0.7); stroke-width: 0.6; }
+.rc-track { fill: none; stroke: rgba(255, 255, 255, 0.12); stroke-width: 1; }
+.rc-fill { fill: none; stroke: var(--sess); stroke-width: 1.4; stroke-linecap: round; transition: stroke-dashoffset 0.3s linear, stroke 1s; filter: drop-shadow(0 0 2px var(--sess)); }
+.rc-knob { fill: #fff; filter: drop-shadow(0 0 3px var(--sess)); }
+.rc-center { display: flex; flex-direction: column; align-items: center; gap: 4px; transform: translateZ(40px); }
+.rc-time { font-family: var(--font-display); font-weight: 800; font-size: clamp(64px, 9vh, 104px); letter-spacing: -0.04em; line-height: 1; text-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); }
+.rc-sub { font-size: 14px; font-weight: 500; opacity: 0.75; font-variant-numeric: tabular-nums; }
+
+.analog { width: clamp(260px, 40vh, 410px); aspect-ratio: 1; filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.35)); }
+.analog svg { width: 100%; height: 100%; overflow: visible; }
+.an-face { fill: rgba(255, 255, 255, 0.07); stroke: rgba(255, 255, 255, 0.24); stroke-width: 0.6; }
+.an-tick { stroke: rgba(255, 255, 255, 0.4); stroke-width: 0.8; stroke-linecap: round; }
+.an-tick.major { stroke: #fff; stroke-width: 1.6; }
+.an-hand-g { transform-origin: 50px 50px; transform-box: view-box; }
+.an-hour { stroke: #fff; stroke-width: 3.2; stroke-linecap: round; }
+.an-min { stroke: #fff; stroke-width: 2; stroke-linecap: round; }
+.an-sec { stroke: #ff8a7a; stroke-width: 0.8; stroke-linecap: round; }
+.an-pin { fill: #ff8a7a; }
+
+.clock-minimal { display: flex; flex-direction: column; align-items: center; }
+.cm-time { display: flex; align-items: baseline; font-weight: 200; font-size: clamp(110px, 13vw, 210px); letter-spacing: -0.05em; line-height: 0.95; font-variant-numeric: tabular-nums; }
+.cm-date { margin-top: 10px; font-size: 13px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; opacity: 0.75; }
+
+.clock-pixel {
+  position: relative; display: flex; align-items: baseline; font-family: 'VT323', monospace; font-size: clamp(140px, 17vw, 260px);
+  line-height: 0.85; color: #d8ffe4; letter-spacing: 0.02em; text-shadow: 0 0 18px rgba(120, 255, 170, 0.55), 0 0 2px #fff;
+}
+.clock-pixel::after { content: ''; position: absolute; inset: -6px; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 5px); pointer-events: none; mix-blend-mode: multiply; }
+.px-colon { animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0.15; } }
+.px-sec { font-size: 0.32em; margin-left: 0.2em; opacity: 0.7; }
+
+.clock-words {
+  max-width: min(820px, 86vw); display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 0 0.28em;
+  font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: clamp(56px, 7.4vw, 116px); line-height: 1; text-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+.clock-words span { display: inline-block; animation: wordIn 0.9s var(--ease-out) both; }
+.cw-lead { font-family: var(--font-ui); font-style: normal; font-weight: 600; font-size: 0.3em; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.75; align-self: center; }
+
+.clock-poster { display: grid; grid-template-columns: auto auto; align-items: end; column-gap: 18px; line-height: 0.8; }
+.cp-h, .cp-m { grid-column: 1; font-family: var(--font-display); font-weight: 800; font-variation-settings: 'wdth' 75, 'opsz' 96; font-size: clamp(120px, 21vh, 220px); letter-spacing: -0.04em; }
+.cp-m { color: transparent; -webkit-text-stroke: 3px var(--ink-stroke, #fff); }
+.cp-day { grid-column: 2; grid-row: 1 / span 2; align-self: center; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 14px; font-weight: 700; letter-spacing: 0.4em; text-transform: uppercase; opacity: 0.8; }
+
+/* ================================================================ QUOTE AUTHOR, FOCUS RING, TOMATOES */
+
+.quote cite { display: block; margin-top: 8px; font-family: var(--font-ui); font-style: normal; font-size: 13px; font-weight: 500; letter-spacing: 0; opacity: 0.7; }
+.quote cite::before { content: '— '; }
+
+.view-focus .ring-fill { stroke: var(--sess); filter: drop-shadow(0 0 3px var(--sess)); transition: stroke-dashoffset 0.3s linear, stroke 1s; }
+.ring-knob { fill: #fff; filter: drop-shadow(0 0 2px var(--sess)) drop-shadow(0 0 5px var(--sess)); }
+
+.tomato-dots { display: flex; gap: 8px; margin-top: 22px; }
+.td { width: 24px; height: 24px; overflow: visible; transition: transform 0.4s var(--spring); }
+.td.done { transform: scale(1.1); }
+.td-outline { fill: none; stroke: rgba(255, 255, 255, 0.6); stroke-width: 1.4; }
+.td-fill { fill: #ef4b35; }
+.td-leaf { fill: #4ade80; }
+
+/* ================================================================ COMPANION */
+
+.companion {
+  position: absolute; right: -8%; bottom: -4%; width: clamp(130px, 17vh, 180px); pointer-events: none; z-index: 2;
+  transform: translateZ(60px); filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.3)); animation: rise 0.8s var(--ease-out) both;
+}
+.companion svg { width: 100%; overflow: visible; }
+.cp-shadow { fill: rgba(0, 0, 0, 0.25); }
+.tm-skin { fill: #ef4b35; }
+.tm-shade { fill: #d63a26; opacity: 0.55; }
+.tm-hi { fill: #fff; opacity: 0.35; }
+.tm-leaf { fill: #3fb950; stroke: #2a8a3a; stroke-width: 1.2; stroke-linejoin: round; }
+.tm-stem { fill: none; stroke: #2a8a3a; stroke-width: 3; stroke-linecap: round; }
+.eye { fill: #2b1a17; }
+.glint { fill: #fff; }
+.eye-closed { fill: none; stroke: #2b1a17; stroke-width: 2.6; stroke-linecap: round; }
+.glasses { fill: none; stroke: #2b1a17; stroke-width: 1.8; }
+.cheek { fill: #ff8fa0; opacity: 0.75; }
+.mouth { fill: none; stroke: #2b1a17; stroke-width: 2.4; stroke-linecap: round; }
+.hand { fill: #ef4b35; stroke: #c5301e; stroke-width: 1; }
+.cp-body { transform-origin: 80px 124px; animation: cpBob 3s ease-in-out infinite; }
+.cp-eyes { transform-origin: 80px 80px; animation: cpBlink 4.5s infinite; }
+@keyframes cpBob { 50% { transform: translateY(-3px) scaleY(1.02); } }
+@keyframes cpBlink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+.st-work .cp-body { animation-duration: 1.4s; }
+.st-work .cp-face { transform: translateY(3px); }
+.lp-base { fill: #c9ccd6; stroke: #8a8ea0; stroke-width: 1; }
+.lp-screen { fill: #3a3d4a; stroke: #8a8ea0; stroke-width: 1.4; }
+.lp-logo { fill: #fff; opacity: 0.6; animation: pulse 2s infinite; }
+.h1 { animation: type 0.32s ease-in-out infinite alternate; }
+.h2 { animation: type 0.32s 0.16s ease-in-out infinite alternate; }
+@keyframes type { to { transform: translateY(-4px); } }
+.beanbag ellipse { fill: #3b5fd9; }
+.beanbag .bb-top { fill: #4f73ee; }
+.st-rest .cp-body { animation-duration: 5s; }
+.mug-cup { fill: #f5f0e6; stroke: #8a7a66; stroke-width: 1.4; }
+.mug-handle { fill: none; stroke: #8a7a66; stroke-width: 2.4; }
+.steam { fill: none; stroke: rgba(255, 255, 255, 0.75); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 30; animation: steam 2.4s ease-in-out infinite; }
+.steam.s2 { animation-delay: 1.2s; }
+@keyframes steam { 0% { stroke-dashoffset: 30; opacity: 0; transform: translateY(6px); } 40% { opacity: 1; } 100% { stroke-dashoffset: -30; opacity: 0; transform: translateY(-8px); } }
+.wave { transform-origin: 118px 84px; animation: wave 1.6s ease-in-out infinite; }
+@keyframes wave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-22deg); } 75% { transform: rotate(14deg); } }
+.st-pause .wave { animation: none; }
+.zz { fill: #fff; font: 700 20px var(--font-ui); animation: pulse 2s infinite; }
+
+@media (max-width: 720px) {
+  .clock-styles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .companion { right: -2%; bottom: -8%; width: 96px; }
+  .orbit { min-width: 300px; }
+}
