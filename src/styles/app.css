@@ -48,7 +48,10 @@
 
 .app { position: fixed; inset: 0; }
 .ui { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.ui > :not(.view):not(.top-right) { pointer-events: auto; }
+.ui > :not(.view):not(.top-right):not(.panel-pos) { pointer-events: auto; }
+/* closed panels stay mounted (so music keeps playing) but must never swallow clicks */
+.panel-pos { pointer-events: none; }
+.panel.open { pointer-events: auto; }
 
 .logo {
   position: absolute; left: 40px; top: 26px;
