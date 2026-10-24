@@ -1,0 +1,62 @@
+/* ================================================================ SIGN-IN GATE */
+
+.gate {
+  position: relative; z-index: 2; min-height: 100vh; height: 100vh; overflow-y: auto;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 460px); align-items: center; gap: 48px;
+  padding: 40px clamp(20px, 7vw, 120px);
+}
+.gate-brand { align-self: center; animation: rise 1s var(--ease-out) both; }
+.gate-logo {
+  display: inline-block; font-family: var(--font-display); font-weight: 800; font-variation-settings: 'wdth' 88, 'opsz' 96;
+  font-size: clamp(72px, 11vw, 168px); line-height: 0.85; letter-spacing: -0.05em; text-decoration: none;
+  font-variant-ligatures: no-common-ligatures; text-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  transform: perspective(900px) rotateY(calc(var(--mx, 0) * 8deg)) rotateX(calc(var(--my, 0) * -6deg));
+}
+.gate-brand p { margin-top: 18px; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: clamp(24px, 2.6vw, 38px); opacity: 0.9; }
+
+.gate-card {
+  display: flex; flex-direction: column; gap: 16px; padding: 28px; border-radius: 22px;
+  background: rgba(12, 10, 20, 0.62); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.09) inset, 0 40px 100px -30px rgba(0, 0, 0, 0.75);
+  animation: gateIn 0.8s var(--spring) both;
+}
+@keyframes gateIn { from { opacity: 0; transform: perspective(1000px) rotateX(14deg) rotateY(-10deg) translateY(30px) scale(0.96); } }
+.gate-title { font-family: var(--font-display); font-weight: 700; font-size: 28px; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 4px; }
+.gate-sep { display: flex; align-items: center; gap: 12px; color: var(--ink-3); font-size: 12px; }
+.gate-sep::before, .gate-sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.gate-ask, .req-send, .req-mail { width: 100%; height: 44px; }
+.gate-contact { text-align: center; line-height: 1.6; }
+.gate-contact a { color: #c4b0ff; text-decoration: none; }
+.gate-contact a:hover { text-decoration: underline; }
+.gate-foot { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.gate-loading { position: relative; z-index: 2; height: 100vh; display: grid; place-items: center; }
+.gate-loading span { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.2); border-top-color: #fff; animation: spin 0.8s linear infinite; }
+
+.btn.wa { background: #25d366; color: #052e16; box-shadow: 0 10px 26px -10px rgba(37, 211, 102, 0.7), 0 1px 0 rgba(255, 255, 255, 0.35) inset; }
+.btn.wa:hover { filter: brightness(1.06); }
+.btn.disabled { opacity: 0.45; pointer-events: none; }
+
+.req-form { display: flex; flex-direction: column; gap: 12px; }
+.req-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding-left: 0; }
+.req-form textarea { resize: vertical; min-height: 56px; }
+.req-preview { padding: 10px 12px; border-radius: 10px; background: rgba(37, 211, 102, 0.08); box-shadow: 0 0 0 1px rgba(37, 211, 102, 0.22) inset; animation: rise 0.4s var(--ease-out) both; }
+.req-preview pre { margin-top: 6px; white-space: pre-wrap; font-family: var(--font-ui); font-size: 12.5px; line-height: 1.5; color: var(--ink-2); }
+
+/* light themes behind the gate keep the card dark, but the brand text should read */
+.app.tone-light .gate-brand { color: #1d1830; }
+.app.tone-light .gate-logo { text-shadow: none; }
+.app.tone-light .gate-foot { color: rgba(29, 24, 48, 0.6); }
+
+/* Spotify early-access notice */
+.sp-blocked { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; background: rgba(251, 191, 36, 0.1); box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.28) inset; }
+.sp-blocked strong { font-size: 13.5px; }
+.sp-blocked p { font-size: 12.5px; }
+
+@media (max-width: 860px) {
+  .gate { grid-template-columns: 1fr; gap: 24px; padding: 28px 16px 60px; align-content: start; }
+  .gate-brand { text-align: center; }
+  .gate-logo { font-size: 84px; }
+  .gate-brand p { font-size: 22px; margin-top: 8px; }
+  .gate-card { padding: 22px 18px; }
+  .gate-foot { position: static; transform: none; justify-self: center; }
+}

@@ -53,12 +53,13 @@ A pomodoro timer that lives inside slow, moving worlds: hand-drawn live scenes, 
 | ⏱️ | **8 clock styles** | Classic, 3D Flip, Ring, Analog, Minimal, Pixel, Words ("thirteen to seven") and Poster. |
 | 🪐 | **Live session progress** | While a session runs, the Home clock shows a 3D tilted orbit ring, a bar or a breathing glow. The color drifts violet → magenta → coral as the session ends (teal → sky on breaks). |
 | 🍅 | **Tomato companion** | A little animated buddy that types on a laptop while you focus and lounges with a mug of tea on breaks. Tomatoes also mark your cycle. |
-| 🎧 | **Spotify** | Embedded player that works for everyone, one-click **Connect Spotify** (OAuth PKCE), search across Spotify + your playlists, and play/pause/skip on your devices. |
+| 🎧 | **Spotify** | Embedded player that works for everyone, one-click **Connect Spotify** (OAuth PKCE, Client ID built in, so users never see developer setup), search across Spotify + your playlists, and play/pause/skip on your devices. |
 | 🌧️ | **Sound mixer** | Rain, waves, wind, fireplace, birds and white/pink/brown noise, synthesized in real time with the Web Audio API. |
 | ✅ | **Tasks & notes** | Draggable glass panels. Pin a task to the timer and floe counts the sessions it took. |
 | 📊 | **Stats** | Focus calendar heatmap, trend chart, streaks, sessions and break time. No paywall. |
 | 💬 | **220+ quotes** | Curated motivational quotes with authors, plus live extras from [QuotesDB](https://quotes-db.vercel.app/) when it's reachable. |
-| 👤 | **Accounts & sync** | Sign up or sign in with **email or username**. Tasks, notes, settings and stats sync across devices via Supabase. |
+| 🔐 | **Members only** | `/app` requires an account. New people can sign up, or tap **Ask the owner for an account**: a short form opens WhatsApp (or email) with their name, email, preferred username and reason already written out. |
+| 👤 | **Accounts & sync** | Sign in with **email or username**. Tasks, notes, settings and stats sync across devices via Supabase. Signing out clears the device, so shared computers stay private. |
 | 🛡️ | **Admin dashboard** | `/admin`: live stats & charts, user directory, create accounts (with a one-click **copy credentials + link** button), promote to moderator/admin, suspend, reset passwords, delete. |
 | ✨ | **Landing page** | WebGL shader blob hero, a 3D browser mockup that tilts into view on scroll, a 3D carousel of live scenes, and interactive demos. |
 
@@ -328,8 +329,8 @@ Open **http://127.0.0.1:5173**. Use `127.0.0.1`, not `localhost`: Spotify only a
 
 | Route | What |
 |---|---|
-| `/` | Landing page |
-| `/app` | The app |
+| `/` | Landing page (public) |
+| `/app` | The app (sign-in required when Supabase is configured) |
 | `/admin` | Admin dashboard (admins and moderators) |
 
 Without any configuration floe runs fully local: no accounts, everything saved in the browser.
@@ -340,7 +341,8 @@ Without any configuration floe runs fully local: no accounts, everything saved i
 |---|---|---|
 | `VITE_SUPABASE_URL` | for accounts | Supabase → Project Settings → API |
 | `VITE_SUPABASE_ANON_KEY` | for accounts | Supabase → API keys → **publishable** key (safe to expose) |
-| `VITE_SPOTIFY_CLIENT_ID` | for "Connect Spotify" | [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) → Create app → Web API |
+| `VITE_SPOTIFY_CLIENT_ID` | for "Connect Spotify" | [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) → Create app → Web API. Public identifier; with it set, users just click Connect |
+| `VITE_OWNER_NAME` / `VITE_OWNER_EMAIL` / `VITE_OWNER_WHATSAPP` | optional | Contact details shown on the sign-in screen for account requests (WhatsApp in international digits, e.g. `923001234567`) |
 
 **Supabase setup (new project):**
 
@@ -349,7 +351,7 @@ Without any configuration floe runs fully local: no accounts, everything saved i
 3. Auth → URL configuration: set the Site URL to `https://<your-site>/app` and add `https://<your-site>/**` and `http://127.0.0.1:5173/**` to the redirect URLs.
 4. Create your first account, then make it an admin: `update profiles set role = 'admin' where username = '<you>';`
 
-**Spotify setup:** add `http://127.0.0.1:5173/app` and `https://<your-site>/app` as redirect URIs. New Spotify apps are in Development mode: your account works, and up to 25 others can be added under User Management.
+**Spotify setup:** add `http://127.0.0.1:5173/app` and `https://<your-site>/app` as redirect URIs. New Spotify apps are in Development mode: your account works, and up to 25 others can be added under User Management. Anyone not on the list sees a friendly notice with a one-tap WhatsApp request instead of an error. Apply for Extended Quota to open it to everyone.
 
 ## Deployment
 

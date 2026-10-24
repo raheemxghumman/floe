@@ -10,6 +10,9 @@ import {
   type Me, type MusicItem, type Playback, type Playlist,
 } from '../../lib/spotify'
 import { toast } from '../../hooks'
+import { spotifyAccessMessage, whatsappLink } from '../../lib/owner'
+import { useAccount } from '../../lib/account'
+import { WhatsAppGlyph } from '../AuthGate'
 import { FloatingPanel } from './FloatingPanel'
 
 export function SpotifyGlyph({ size = 16 }: { size?: number }) {
@@ -73,10 +76,13 @@ function SpotifyTab({ open }: { open: boolean }) {
   const clientId = clientIdFor(useStore((s) => s.settings.spotify.clientId))
   const { updateSpotify, openSettings } = useStore.getState()
   const connected = useSpotifyConnected()
+  const profile = useAccount((s) => s.profile)
   const [mounted, setMounted] = useState(false)
   const [me, setMe] = useState<Me | null>(null)
   const [lists, setLists] = useState<Playlist[]>([])
   const [pb, setPb] = useState<Playback | null>(null)
+  // Spotify apps in Development mode reject accounts not on the owner's allow-list with a 403
+  const [blocked, setBlocked] = useState(false)
   const [q, setQ] = useState('')
   const [results, setResults] = useState<MusicItem[]>([])
   const [searching, setSearching] = useState(false)
@@ -87,7 +93,7 @@ function SpotifyTab({ open }: { open: boolean }) {
 
   useEffect(() => {
     if (!connected) { setMe(null); setLists([]); return }
-    api<Me>('/me').then(setMe).catch(() => {})
+    api<Me>('/me').then((m) => { setMe(m); setBlocked(false) }).catch((e: Error) => { if (/403/.test(e.message)) setBlocked(true) })
     api<{ items: (Playlist | null)[] }>('/me/playlists?limit=50')
       .then((r) => setLists((r?.items ?? []).filter((p): p is Playlist => !!p)))
       .catch(() => {})
@@ -113,7 +119,8 @@ function SpotifyTab({ open }: { open: boolean }) {
   }, [debounced, connected])
 
   const premium = me?.product === 'premium'
-  const mine = useMemo(() => lists.map(playlistItem), [lists])
+  const lists_ = blocked ? [] : lists
+  const mine = useMemo(() => lists_.map(playlistItem), [lists_])
   const needle = q.trim().toLowerCase()
   const mineFiltered = needle ? mine.filter((p) => p.name.toLowerCase().includes(needle)) : mine
   const presetsFiltered = needle ? PRESET_ITEMS.filter((p) => p.name.toLowerCase().includes(needle)) : PRESET_ITEMS
@@ -170,6 +177,19 @@ function SpotifyTab({ open }: { open: boolean }) {
           {connected && <button className="icon-btn ghost xs" onClick={logout} title="Disconnect Spotify" aria-label="Disconnect Spotify"><LogOut size={14} /></button>}
         </span>
       </div>
+
+      {connected && blocked && (
+        <div className="sp-blocked">
+          <strong>Spotify needs to approve your account</strong>
+          <p className="muted">floe’s Spotify app is still in early access, so the owner has to add your Spotify email once. The player above still works.</p>
+          <div className="row-inline wrap">
+            <a className="btn sm wa" href={whatsappLink(spotifyAccessMessage(profile?.display_name ?? '', profile?.username ?? ''))} target="_blank" rel="noreferrer">
+              <WhatsAppGlyph /> Ask on WhatsApp
+            </a>
+            <button className="btn sm ghost" onClick={logout}>Disconnect</button>
+          </div>
+        </div>
+      )}
 
       {item && (
         <div className="sp-now">

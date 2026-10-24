@@ -16,8 +16,8 @@ export const redirectUri = () => `${window.location.origin}/app`
 
 /** Baked in at build time by whoever deploys floe — users never see or enter it. */
 export const BUILT_IN_CLIENT_ID = ((import.meta.env.VITE_SPOTIFY_CLIENT_ID as string | undefined) ?? '').trim()
-/** A Client ID typed into Settings (advanced override) wins over the built-in one. */
-export const clientIdFor = (override: string) => override.trim() || BUILT_IN_CLIENT_ID
+/** The built-in ID always wins; a pasted override only matters on builds without one. */
+export const clientIdFor = (override: string) => BUILT_IN_CLIENT_ID || override.trim()
 
 interface Token { access: string; refresh: string; expires: number; clientId: string }
 

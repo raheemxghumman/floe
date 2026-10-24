@@ -127,7 +127,7 @@ function Hero() {
           <a className="cta" href="/app"><span className="cta-face">Start focusing <ArrowRight size={18} /></span></a>
           <a className="cta-link" href="#scenes">See the scenes</a>
         </div>
-        <p className="fine">Free · no sign-up · runs in your browser</p>
+        <p className="fine">Free · members only · your account syncs everywhere</p>
       </div>
       <div className="float-card fc-timer" style={{ ['--z' as string]: 1.4 }}>
         <span className="fc-k">Focus</span>
@@ -388,9 +388,10 @@ function Keys() {
 }
 
 const FAQ: [string, string][] = [
-  ['Is floe really free?', 'Yes. There’s no paid tier, nothing locked behind a plan, and no account to make. It all runs in your browser.'],
-  ['Do I need Spotify Premium?', 'No. The built-in player works for everyone, and you get full tracks if you’re signed in to Spotify in the same browser. Remote-controlling your other devices is a Spotify Premium feature.'],
-  ['Where does my data live?', 'In your browser’s local storage, on your machine. You can export a backup any time from Settings → Account, and import it on another computer.'],
+  ['How do I get in?', 'floe is members-only. Create an account in a few seconds, or tap “Ask the owner for an account” on the sign-in screen to request one on WhatsApp.'],
+  ['Is floe really free?', 'Yes. There’s no paid tier and nothing locked behind a plan.'],
+  ['Do I need Spotify Premium?', 'No. The built-in player works for everyone, and Connect Spotify is a single click. Remote-controlling your other devices is a Spotify Premium feature.'],
+  ['Where does my data live?', 'In your own account, protected so only you can read it, and cached in your browser so floe stays fast. Export a backup any time from Settings → Account.'],
   ['Can I use my own background?', 'Yes. Paste an image, a looping video or any YouTube link, or upload a file from your computer. Each mode (Ambient, Home, Focus) can have its own.'],
   ['Does it work offline?', 'The timer, scenes, sounds, tasks and notes all do. Spotify and YouTube streams need a connection.'],
 ]
@@ -430,7 +431,7 @@ function Final() {
         <div className="wordmark" aria-hidden>floe</div>
         <div className="foot-row">
           <span>Made for deep work · {new Date().getFullYear()}</span>
-          <span>Everything stays on your device.</span>
+          <span>Your data, synced and private.</span>
         </div>
       </footer>
     </section>

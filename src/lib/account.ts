@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import type { User } from '@supabase/supabase-js'
 import { callFn, supabase, type Profile } from './supabase'
 import { useStore, type Note, type Session, type Settings, type Task } from '../store'
+import { logout as spotifyLogout } from './spotify'
 
 type SyncState = 'off' | 'syncing' | 'synced' | 'error'
 
@@ -60,8 +61,21 @@ export async function updatePassword(password: string) {
   if (error) throw new Error(error.message)
 }
 
+// which account the data in this browser belongs to, so a second person on a shared device starts clean
+const OWNER_KEY = 'floe-data-owner'
+
+function wipeLocal() {
+  useStore.getState().resetAll()
+  spotifyLogout()
+  try { localStorage.removeItem(EDIT_KEY); localStorage.removeItem(OWNER_KEY) } catch { /* private mode */ }
+}
+
 export async function signOut() {
+  const { user } = useAccount.getState()
+  // flush anything still waiting in the debounce before the session goes away
+  if (user && pushTimer) { clearTimeout(pushTimer); await push(user.id).catch(() => {}) }
   await supabase?.auth.signOut()
+  wipeLocal()
 }
 
 export async function updateDisplayName(name: string) {
@@ -197,7 +211,12 @@ export function initAccount() {
     if (!user) { stopSync(); useAccount.setState({ profile: null, sync: 'off', lastSync: null }); return }
     if (event === 'PASSWORD_RECOVERY') window.dispatchEvent(new Event('floe-password-recovery'))
     // defer: Supabase forbids awaiting its own calls inside this callback
-    if (user.id !== prevId && initAccount.syncOnSignIn) window.setTimeout(() => void startSync(user), 0)
+    if (user.id !== prevId && initAccount.syncOnSignIn) {
+      const owner = localStorage.getItem(OWNER_KEY)
+      if (owner && owner !== user.id) wipeLocal()
+      try { localStorage.setItem(OWNER_KEY, user.id) } catch { /* private mode */ }
+      window.setTimeout(() => void startSync(user), 0)
+    }
     else if (user.id !== prevId) window.setTimeout(() => void loadProfile(user.id), 0)
   })
 }

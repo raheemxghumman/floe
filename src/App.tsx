@@ -2,10 +2,13 @@ import { useEffect } from 'react'
 import './styles/app.css'
 import './styles/clocks.css'
 import './styles/themes.css'
+import './styles/gate.css'
 import { useStore } from './store'
 import { toast, useIdle, useParallax, useShortcuts, useTimerEngine } from './hooks'
 import { handleRedirect } from './lib/spotify'
-import { initAccount } from './lib/account'
+import { initAccount, useAccount } from './lib/account'
+import { cloudEnabled } from './lib/supabase'
+import { AuthGate } from './components/AuthGate'
 import { resolveTheme } from './themes'
 import { Background } from './components/Background'
 import { FocusView, HomeView, QuoteBlock, TimerCard } from './components/views'
@@ -29,6 +32,7 @@ export default function App() {
   const anyPanel = useStore((s) => Object.values(s.panels).some(Boolean))
   const settingsOpen = useStore((s) => s.settingsOpen)
   const tone = useStore((s) => resolveTheme(s.settings.themes[s.view], s.settings.customThemes).tone)
+  const { ready, user } = useAccount()
   const idle = useIdle(view === 'ambient' && hideIdle && !anyPanel && !settingsOpen)
 
   useEffect(() => {
@@ -39,6 +43,17 @@ export default function App() {
       if (!useStore.getState().panels.music) useStore.getState().togglePanel('music')
     })
   }, [])
+
+  // the app is members-only: show the sign-in / request-access screen until there's a session
+  if (cloudEnabled && (!ready || !user)) {
+    return (
+      <div className="app v-home">
+        <Background />
+        {ready ? <AuthGate /> : <div className="gate-loading" aria-label="Loading"><span /></div>}
+        <Toasts />
+      </div>
+    )
+  }
 
   return (
     <div className={`app v-${view} ${idle ? 'idle' : ''} ${settingsOpen ? 'drawer-open' : ''} ${tone === 'light' ? 'tone-light' : ''}`}>

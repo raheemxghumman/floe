@@ -187,7 +187,7 @@ export function MusicSection() {
         </div>
         {onLocalhost && <p className="warn small">Spotify rejects “localhost”. Open this app at <a href={`http://127.0.0.1:${window.location.port}/app`}>127.0.0.1:{window.location.port}</a> instead.</p>}
 
-        {(!BUILT_IN_CLIENT_ID || sp.clientId) && (
+        {!BUILT_IN_CLIENT_ID && (
           <details className="dev-setup" open={!clientId}>
             <summary>One-time setup for the app owner</summary>
             <p className="muted small">
