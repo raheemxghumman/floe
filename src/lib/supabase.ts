@@ -22,13 +22,20 @@ export interface Profile {
   last_seen: string
 }
 
-/** Calls an Edge Function and turns its `{ error }` body into a thrown Error. */
-export async function callFn<T>(name: string, body: object): Promise<T> {
+/** Calls an Edge Function and turns its `{ error }` body into a thrown Error.
+ *  On a 401 it refreshes the session and retries once; if that fails the stale
+ *  session is dropped locally so the sign-in screen appears. */
+export async function callFn<T>(name: string, body: object, retried = false): Promise<T> {
   if (!supabase) throw new Error('Accounts aren’t configured.')
   const { data, error } = await supabase.functions.invoke(name, { body })
   if (error) {
-    // FunctionsHttpError carries the response; surface our friendly message
     const ctx = (error as { context?: Response }).context
+    if (ctx?.status === 401 && name !== 'login') {
+      if (!retried && !(await supabase.auth.refreshSession()).error) return callFn<T>(name, body, true)
+      await supabase.auth.signOut({ scope: 'local' })
+      throw new Error('Your session expired. Please sign in again.')
+    }
+    // FunctionsHttpError carries the response; surface our friendly message
     const msg = ctx ? await ctx.json().then((j: { error?: string }) => j.error).catch(() => null) : null
     throw new Error(msg ?? error.message)
   }

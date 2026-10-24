@@ -74,7 +74,8 @@ export async function signOut() {
   const { user } = useAccount.getState()
   // flush anything still waiting in the debounce before the session goes away
   if (user && pushTimer) { clearTimeout(pushTimer); await push(user.id).catch(() => {}) }
-  await supabase?.auth.signOut()
+  // local scope: signing out here must not end the same account's sessions on other devices
+  await supabase?.auth.signOut({ scope: 'local' })
   wipeLocal()
 }
 
@@ -210,6 +211,13 @@ export function initAccount() {
     useAccount.setState({ user, ready: true })
     if (!user) { stopSync(); useAccount.setState({ profile: null, sync: 'off', lastSync: null }); return }
     if (event === 'PASSWORD_RECOVERY') window.dispatchEvent(new Event('floe-password-recovery'))
+    // a stored session can outlive its server-side session (revoked, signed out elsewhere, user deleted);
+    // check once at startup and drop it so the sign-in screen shows instead of failing later
+    if (event === 'INITIAL_SESSION') {
+      window.setTimeout(() => void supabase!.auth.getUser().then(({ error }) => {
+        if (error) void supabase!.auth.signOut({ scope: 'local' })
+      }), 0)
+    }
     // defer: Supabase forbids awaiting its own calls inside this callback
     if (user.id !== prevId && initAccount.syncOnSignIn) {
       const owner = localStorage.getItem(OWNER_KEY)
