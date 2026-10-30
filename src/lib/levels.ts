@@ -71,3 +71,25 @@ export function useLevel(): LevelInfo {
     [sessions, tasksCompleted, bonus, infinite],
   )
 }
+
+/** Consecutive days with at least one focus session, counting back from today (an empty today doesn't break it). */
+export function streakFrom(sessions: Session[]) {
+  const days = new Set<string>()
+  for (const s of sessions) if (s.type === 'focus') { const d = new Date(s.at); days.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`) }
+  const key = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+  const cur = new Date(); cur.setHours(12, 0, 0, 0)
+  const today = key(cur)
+  let n = 0
+  for (let i = 0; i < 3650; i++) {
+    const k = key(cur)
+    if (days.has(k)) n++
+    else if (k !== today) break
+    cur.setDate(cur.getDate() - 1)
+  }
+  return n
+}
+
+export function useStreak() {
+  const sessions = useStore((s) => s.sessions)
+  return useMemo(() => streakFrom(sessions), [sessions])
+}

@@ -5,8 +5,12 @@ export type ViewMode = 'home' | 'ambient' | 'focus'
 export type TimerMode = 'focus' | 'short' | 'long'
 export type PanelId = 'tasks' | 'music' | 'notes'
 export type SettingsSection =
-  | 'themes' | 'modes' | 'companions' | 'clock' | 'timer' | 'stats' | 'quotes' | 'music' | 'extras' | 'account' | 'about'
-export type ClockStyle = 'classic' | 'flip' | 'ring' | 'analog' | 'minimal' | 'pixel' | 'words' | 'poster'
+  | 'themes' | 'modes' | 'companions' | 'clock' | 'timer' | 'stats' | 'quotes' | 'music' | 'extras' | 'account' | 'support' | 'about'
+export type ClockStyle = 'classic' | 'flip' | 'ring' | 'analog' | 'minimal' | 'pixel' | 'words' | 'poster' | 'bar' | 'gauge' | 'dots' | 'pie'
+export type ClockFont = 'bold' | 'light' | 'soft' | 'bubble' | 'minimal-light' | 'minimal' | 'serif' | 'serif-condensed' | 'sporty' | 'heavy-wide' | 'digital' | 'handwritten'
+export type TallyStyle = 'tomatoes' | 'dots' | 'stars' | 'hearts' | 'bars' | 'numbers'
+export type TimerKind = 'pomodoro' | 'countdown' | 'stopwatch'
+export type QuotePosition = 'top-right' | 'top-left' | 'bottom' | 'below-clock'
 export type ProgressStyle = 'orbit' | 'ring' | 'bar' | 'glow' | 'off'
 export type CompanionId = 'tomato' | 'cat' | 'fox' | 'ghost' | 'robot' | 'sprout'
 export type AccessoryId = 'none' | 'headphones' | 'party' | 'flowers' | 'wizard' | 'crown'
@@ -36,9 +40,9 @@ export interface PetSettings {
   /** highest level whose celebration has been shown */
   seenLevel: number
 }
-export type AlarmSound = 'bell' | 'chime' | 'digital' | 'soft' | 'none'
+export type AlarmSound = 'bell' | 'chime' | 'digital' | 'soft' | 'sparkle' | 'marimba' | 'gong' | 'kalimba' | 'birds' | 'arcade' | 'none'
 
-export interface Task { id: string; text: string; done: boolean; pomos: number; createdAt: number; doneAt?: number }
+export interface Task { id: string; text: string; done: boolean; pomos: number; createdAt: number; doneAt?: number; est?: number }
 export interface Note { id: string; body: string; updatedAt: number }
 export interface Session { at: number; minutes: number; type: TimerMode }
 export interface CustomTheme { id: string; name: string; kind: 'image' | 'video' | 'youtube'; src: string; local?: boolean }
@@ -54,6 +58,11 @@ export interface TimerSettings {
   volume: number
   notify: boolean
   tabTitle: boolean
+  kind: TimerKind
+  taskEta: boolean
+  streak: boolean
+  pipTask: boolean
+  tally: TallyStyle
 }
 
 export interface Settings {
@@ -65,11 +74,15 @@ export interface Settings {
   customThemes: CustomTheme[]
   dim: number
   streamSound: boolean
-  clock: { format: '12' | '24'; seconds: boolean; ampm: boolean }
+  clock: { format: '12' | '24'; seconds: boolean; ampm: boolean; size: 'sm' | 'md' | 'lg'; font: ClockFont; dynamicGreeting: boolean }
   modes: Record<ViewMode, ModeConfig>
   pet: PetSettings
   timer: TimerSettings
-  quotes: { show: boolean; rotate: number; custom: string[]; onlyCustom: boolean }
+  quotes: { show: boolean; rotate: number; custom: string[]; onlyCustom: boolean; size: 'sm' | 'md' | 'lg'; position: QuotePosition; offset: number }
+  perf: { staticThemes: boolean; clearMode: boolean; wakeLock: boolean }
+  defaultTab: SettingsSection | 'recent'
+  randomTheme: 'off' | 'all' | 'gradients' | 'abstract' | 'scenic' | 'nature' | 'urban' | 'interior' | 'animated'
+  ytFavorites: { id: string; title: string }[]
   spotify: { clientId: string; uri: string; compact: boolean }
 }
 
@@ -102,6 +115,7 @@ export function mergeSettings(base: Settings, inc: Partial<Settings> | undefined
     quotes: { ...base.quotes, ...inc.quotes },
     spotify: { ...base.spotify, ...inc.spotify },
     pet: { ...base.pet, ...inc.pet },
+    perf: { ...base.perf, ...inc.perf },
     modes,
   }
 }
@@ -111,14 +125,14 @@ export const defaultSettings: Settings = {
   logoText: 'floe',
   showLogo: true,
   hideIdle: true,
-  themes: { home: 'twilight', ambient: 'forest', focus: 'rain' },
+  themes: { home: 'thermal', ambient: 'forest', focus: 'rain' },
   customThemes: [],
   dim: 0.15,
   streamSound: false,
-  clock: { format: '12', seconds: false, ampm: false },
+  clock: { format: '12', seconds: false, ampm: false, size: 'md', font: 'bold', dynamicGreeting: true },
   modes: {
     home: { ...MODE_BASE, progress: 'orbit' },
-    focus: { ...MODE_BASE, progress: 'ring', companion: 'tomato' },
+    focus: { ...MODE_BASE, progress: 'ring', companion: 'tomato', quote: false },
     ambient: { ...MODE_BASE, progress: 'bar', spot: 'left', quote: false },
   },
   pet: { accessory: 'none', motion: 'lively', effect: 'none', chatter: true, seenLevel: 1 },
@@ -126,8 +140,13 @@ export const defaultSettings: Settings = {
     focus: 25, short: 5, long: 15, longEvery: 4,
     autoBreaks: false, autoFocus: false,
     sound: 'bell', volume: 0.6, notify: false, tabTitle: true,
+    kind: 'pomodoro', taskEta: false, streak: true, pipTask: true, tally: 'tomatoes',
   },
-  quotes: { show: true, rotate: 60, custom: [], onlyCustom: false },
+  quotes: { show: true, rotate: 60, custom: [], onlyCustom: false, size: 'md', position: 'top-right', offset: 0 },
+  perf: { staticThemes: false, clearMode: false, wakeLock: false },
+  defaultTab: 'recent',
+  randomTheme: 'off',
+  ytFavorites: [],
   spotify: {
     // optional override; the built-in ID lives in lib/spotify (BUILT_IN_CLIENT_ID)
     clientId: '',
@@ -177,6 +196,7 @@ interface State {
   removeTask: (id: string) => void
   setActiveTask: (id: string | null) => void
   clearDone: () => void
+  setTaskEst: (id: string, est: number | undefined) => void
 
   addNote: () => void
   updateNote: (id: string, body: string) => void
@@ -195,12 +215,22 @@ interface State {
   resetAll: () => void
 }
 
-export const durationOf = (mode: TimerMode, t: TimerSettings) => mins(t[mode])
+/** Length of a segment. In Task ETA mode, focus follows the active task's estimate. */
+export function durationOf(mode: TimerMode, t: TimerSettings, est?: number) {
+  if (t.kind === 'stopwatch') return mins(60)
+  if (mode === 'focus' && t.taskEta && est) return mins(est)
+  return mins(t[mode])
+}
+const estOf = (s: { tasks: Task[]; activeTaskId: string | null }) => s.tasks.find((x) => x.id === s.activeTaskId)?.est
 
 export const remainingOf = (timer: TimerState, now: number) =>
   timer.running ? Math.max(0, timer.endAt - now) : timer.remaining
 
+/** Stopwatch: endAt is the (shifted) start time, remaining holds elapsed time while paused. */
+export const elapsedOf = (timer: TimerState, now: number) => (timer.running ? now - timer.endAt : timer.remaining)
+
 function nextMode(mode: TimerMode, cycle: number, t: TimerSettings): TimerMode {
+  if (t.kind !== 'pomodoro') return 'focus'
   if (mode !== 'focus') return 'focus'
   return cycle > 0 && cycle % t.longEvery === 0 ? 'long' : 'short'
 }
@@ -230,7 +260,12 @@ export const useStore = create<State>()(
       togglePanel: (p) => set((s) => ({ panels: { ...s.panels, [p]: !s.panels[p] } })),
       closePanels: () => set({ panels: { tasks: false, music: false, notes: false } }),
       openSettings: (section) =>
-        set((s) => ({ settingsOpen: true, settingsSection: section ?? s.settingsSection, themeTarget: s.view })),
+        set((s) => ({
+          settingsOpen: true,
+          // an explicit section wins; otherwise the user's default tab, or wherever they were last
+          settingsSection: section ?? (s.settings.defaultTab !== 'recent' ? s.settings.defaultTab : s.settingsSection),
+          themeTarget: s.view,
+        })),
       closeSettings: () => set({ settingsOpen: false }),
       setSection: (settingsSection) => set({ settingsSection }),
       setThemeTarget: (themeTarget) => set({ themeTarget }),
@@ -240,11 +275,18 @@ export const useStore = create<State>()(
         set((s) => {
           const prev = s.settings.timer
           const timer = { ...prev, ...patch }
-          // keep an idle, untouched timer in sync with its new duration
-          const idle = !s.timer.running && s.timer.remaining === durationOf(s.timer.mode, prev)
+          const est = estOf(s)
+          // switching timer kind starts fresh; otherwise keep an idle, untouched timer in sync
+          if (patch.kind && patch.kind !== prev.kind) {
+            return {
+              settings: { ...s.settings, timer },
+              timer: { mode: 'focus' as TimerMode, cycle: 0, running: false, endAt: 0, remaining: timer.kind === 'stopwatch' ? 0 : durationOf('focus', timer, est) },
+            }
+          }
+          const idle = !s.timer.running && prev.kind !== 'stopwatch' && s.timer.remaining === durationOf(s.timer.mode, prev, est)
           return {
             settings: { ...s.settings, timer },
-            timer: idle ? { ...s.timer, remaining: durationOf(s.timer.mode, timer) } : s.timer,
+            timer: idle ? { ...s.timer, remaining: durationOf(s.timer.mode, timer, est) } : s.timer,
           }
         }),
       updateClock: (patch) => set((s) => ({ settings: { ...s.settings, clock: { ...s.settings.clock, ...patch } } })),
@@ -287,7 +329,15 @@ export const useStore = create<State>()(
           tasks: s.tasks.filter((t) => t.id !== id),
           activeTaskId: s.activeTaskId === id ? null : s.activeTaskId,
         })),
-      setActiveTask: (activeTaskId) => set({ activeTaskId }),
+      setActiveTask: (activeTaskId) =>
+        set((s) => {
+          const t = s.settings.timer
+          // in Task ETA mode an untouched focus timer adopts the newly chosen task's estimate
+          const untouched = !s.timer.running && s.timer.mode === 'focus' && t.kind !== 'stopwatch' && s.timer.remaining === durationOf('focus', t, estOf(s))
+          const est = s.tasks.find((x) => x.id === activeTaskId)?.est
+          return { activeTaskId, timer: untouched && t.taskEta ? { ...s.timer, remaining: durationOf('focus', t, est) } : s.timer }
+        }),
+      setTaskEst: (id, est) => set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, est: est && est > 0 ? Math.min(600, est) : undefined } : t)) })),
       clearDone: () => set((s) => ({ tasks: s.tasks.filter((t) => !t.done) })),
 
       addNote: () => {
@@ -306,24 +356,35 @@ export const useStore = create<State>()(
       start: () =>
         set((s) => {
           if (s.timer.running) return s
-          const remaining = s.timer.remaining > 0 ? s.timer.remaining : durationOf(s.timer.mode, s.settings.timer)
+          if (s.settings.timer.kind === 'stopwatch') return { timer: { ...s.timer, running: true, endAt: Date.now() - s.timer.remaining } }
+          const remaining = s.timer.remaining > 0 ? s.timer.remaining : durationOf(s.timer.mode, s.settings.timer, estOf(s))
           return { timer: { ...s.timer, running: true, remaining, endAt: Date.now() + remaining } }
         }),
       pause: () =>
         set((s) => (s.timer.running
-          ? { timer: { ...s.timer, running: false, remaining: Math.max(0, s.timer.endAt - Date.now()) } }
+          ? { timer: { ...s.timer, running: false, remaining: s.settings.timer.kind === 'stopwatch' ? Date.now() - s.timer.endAt : Math.max(0, s.timer.endAt - Date.now()) } }
           : s)),
       toggle: () => (get().timer.running ? get().pause() : get().start()),
       reset: () =>
-        set((s) => ({ timer: { ...s.timer, running: false, endAt: 0, remaining: durationOf(s.timer.mode, s.settings.timer) } })),
+        set((s) => ({ timer: { ...s.timer, running: false, endAt: 0, remaining: s.settings.timer.kind === 'stopwatch' ? 0 : durationOf(s.timer.mode, s.settings.timer, estOf(s)) } })),
       skip: () =>
         set((s) => {
           const t = s.settings.timer
+          if (t.kind === 'stopwatch') {
+            // "finish": save the stopwatch run as a focus session if it lasted at least a minute
+            const elapsed = elapsedOf(s.timer, Date.now())
+            const minutes = Math.round(elapsed / 60_000)
+            return {
+              sessions: minutes >= 1 ? [...s.sessions, { at: Date.now(), minutes, type: 'focus' as TimerMode }] : s.sessions,
+              timer: { ...s.timer, running: false, endAt: 0, remaining: 0, cycle: minutes >= 1 ? s.timer.cycle + 1 : s.timer.cycle },
+            }
+          }
           const mode = nextMode(s.timer.mode, s.timer.mode === 'focus' ? s.timer.cycle + 1 : s.timer.cycle, t)
-          return { timer: { ...s.timer, mode, running: false, endAt: 0, remaining: durationOf(mode, t) } }
+          return { timer: { ...s.timer, mode, running: false, endAt: 0, remaining: durationOf(mode, t, estOf(s)) } }
         }),
       setTimerMode: (mode) =>
-        set((s) => ({ timer: { ...s.timer, mode, running: false, endAt: 0, remaining: durationOf(mode, s.settings.timer) } })),
+        set((s) => (s.settings.timer.kind === 'stopwatch' ? s
+          : { timer: { ...s.timer, mode, running: false, endAt: 0, remaining: durationOf(mode, s.settings.timer, estOf(s)) } })),
       complete: () => {
         const s = get()
         const t = s.settings.timer
@@ -331,9 +392,9 @@ export const useStore = create<State>()(
         const cycle = finished === 'focus' ? s.timer.cycle + 1 : s.timer.cycle
         const mode = nextMode(finished, cycle, t)
         const auto = mode === 'focus' ? t.autoFocus : t.autoBreaks
-        const dur = durationOf(mode, t)
+        const dur = durationOf(mode, t, estOf(s))
         set({
-          sessions: [...s.sessions, { at: Date.now(), minutes: t[finished], type: finished }],
+          sessions: [...s.sessions, { at: Date.now(), minutes: Math.round(durationOf(finished, t, estOf(s)) / 60_000), type: finished }],
           tasks: finished === 'focus' && s.activeTaskId
             ? s.tasks.map((x) => (x.id === s.activeTaskId ? { ...x, pomos: x.pomos + 1 } : x))
             : s.tasks,

@@ -1,125 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Copy, Download, ExternalLink, KeyRound, LogOut, Play, Shield, Trash2, Upload } from 'lucide-react'
+import { Copy, Download, ExternalLink, KeyRound, LogOut, Shield, Trash2, Upload } from 'lucide-react'
 import { isStaff, signOut, updatePassword, useAccount } from '../../lib/account'
 import { cloudEnabled } from '../../lib/supabase'
 import { AuthForm } from '../AuthForm'
-import { useStore, type AlarmSound } from '../../store'
-import { playAlarm } from '../../lib/audio'
+import { useStore } from '../../store'
 import { BUILT_IN_CLIENT_ID, clientIdFor, isConnected, login, logout, redirectUri } from '../../lib/spotify'
 import { toast } from '../../hooks'
-import { QUOTES } from '../../lib/quotes'
-import { Row, Section, Seg, Stepper, Toggle } from './controls'
+import { Row, Section, Toggle } from './controls'
 import { SpotifyGlyph } from '../panels/MusicPanel'
-
-/* --------------------------------------------------------------- clock */
-
-export function ClockSection() {
-  const c = useStore((s) => s.settings.clock)
-  const updateClock = useStore((s) => s.updateClock)
-  const setSection = useStore((s) => s.setSection)
-  return (
-    <Section title="Clock" sub="How time is written everywhere in floe.">
-      <Row label="Time format">
-        <Seg value={c.format} onChange={(v) => updateClock({ format: v })} options={[{ v: '12', label: '12h' }, { v: '24', label: '24h' }]} />
-      </Row>
-      <Row label="Show seconds"><Toggle on={c.seconds} onChange={(v) => updateClock({ seconds: v })} /></Row>
-      {c.format === '12' && <Row label="Show AM / PM"><Toggle on={c.ampm} onChange={(v) => updateClock({ ampm: v })} /></Row>}
-      <Row label="Clock & timer styles" hint="Each mode has its own style, progress and companion">
-        <button className="btn sm ghost" onClick={() => setSection('modes')}>Customize modes</button>
-      </Row>
-    </Section>
-  )
-}
-
-/* --------------------------------------------------------------- timer */
-
-const SOUNDS: { v: AlarmSound; label: string }[] = [
-  { v: 'bell', label: 'Bell' }, { v: 'chime', label: 'Chime' }, { v: 'soft', label: 'Soft' }, { v: 'digital', label: 'Digital' }, { v: 'none', label: 'None' },
-]
-
-export function TimerSection() {
-  const t = useStore((s) => s.settings.timer)
-  const up = useStore((s) => s.updateTimerSettings)
-  const enableNotify = async (v: boolean) => {
-    if (v && 'Notification' in window && Notification.permission !== 'granted') {
-      const p = await Notification.requestPermission()
-      if (p !== 'granted') { toast('Notifications are blocked in your browser'); return }
-    }
-    up({ notify: v })
-  }
-  return (
-    <>
-      <Section title="Focus Timer" sub="Durations in minutes.">
-        <div className="dur-grid">
-          {([['focus', 'Focus', 1, 180], ['short', 'Short break', 1, 60], ['long', 'Long break', 1, 90]] as const).map(([k, label, min, max]) => (
-            <div key={k} className={`dur dur-${k}`}>
-              <span className="muted small">{label}</span>
-              <Stepper value={t[k]} min={min} max={max} onChange={(v) => up({ [k]: v })} />
-            </div>
-          ))}
-        </div>
-        <Row label="Long break every" hint="Number of focus sessions before a long break">
-          <Stepper value={t.longEvery} min={2} max={10} onChange={(v) => up({ longEvery: v })} />
-        </Row>
-        <Row label="Auto-start breaks"><Toggle on={t.autoBreaks} onChange={(v) => up({ autoBreaks: v })} /></Row>
-        <Row label="Auto-start focus" hint="Start the next session automatically after a break"><Toggle on={t.autoFocus} onChange={(v) => up({ autoFocus: v })} /></Row>
-      </Section>
-      <Section title="Alerts">
-        <Row label="Alarm sound">
-          <div className="row-inline">
-            <select value={t.sound} onChange={(e) => up({ sound: e.target.value as AlarmSound })}>
-              {SOUNDS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
-            </select>
-            <button className="icon-btn glass sm" onClick={() => playAlarm(t.sound, t.volume)} aria-label="Preview sound"><Play size={14} /></button>
-          </div>
-        </Row>
-        <Row label="Volume">
-          <input type="range" min={0} max={1} step={0.01} value={t.volume} onChange={(e) => up({ volume: Number(e.target.value) })} style={{ ['--v' as string]: t.volume }} />
-        </Row>
-        <Row label="Desktop notifications"><Toggle on={t.notify} onChange={(v) => void enableNotify(v)} /></Row>
-        <Row label="Countdown in tab title"><Toggle on={t.tabTitle} onChange={(v) => up({ tabTitle: v })} /></Row>
-      </Section>
-    </>
-  )
-}
-
-/* -------------------------------------------------------------- quotes */
-
-export function QuotesSection() {
-  const q = useStore((s) => s.settings.quotes)
-  const up = useStore((s) => s.updateQuotes)
-  const [text, setText] = useState('')
-  return (
-    <Section title="Quotes" sub="A line of motivation in the corner of your Home screen.">
-      <Row label="Show quotes"><Toggle on={q.show} onChange={(v) => up({ show: v })} /></Row>
-      <Row label="New quote">
-        <select value={q.rotate} onChange={(e) => up({ rotate: Number(e.target.value) })}>
-          <option value={0}>Every visit</option>
-          <option value={10}>Every 10 minutes</option>
-          <option value={30}>Every 30 minutes</option>
-          <option value={60}>Every hour</option>
-          <option value={1440}>Every day</option>
-        </select>
-      </Row>
-      <Row label="Only my quotes" hint={q.custom.length ? undefined : 'Add a quote below first'}>
-        <Toggle on={q.onlyCustom} onChange={(v) => up({ onlyCustom: v })} />
-      </Row>
-      <form className="inline-form" onSubmit={(e) => { e.preventDefault(); if (text.trim()) { up({ custom: [...q.custom, text.trim()] }); setText('') } }}>
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add your own quote" maxLength={140} />
-        <button className="btn sm" type="submit">Add</button>
-      </form>
-      <ul className="quote-list">
-        {q.custom.map((c, i) => (
-          <li key={i}>
-            <span>“{c}”</span>
-            <button className="icon-btn ghost xs" onClick={() => up({ custom: q.custom.filter((_, j) => j !== i) })} aria-label="Remove"><Trash2 size={13} /></button>
-          </li>
-        ))}
-        {!q.custom.length && <li className="muted small">{QUOTES.length} built-in quotes. Yours will show up here.</li>}
-      </ul>
-    </Section>
-  )
-}
 
 /* --------------------------------------------------------------- music */
 
@@ -182,34 +70,6 @@ export function MusicSection() {
       </Section>
       <Section title="Player">
         <Row label="Compact player" hint="Smaller embed without the track list"><Toggle on={sp.compact} onChange={(v) => up({ compact: v })} /></Row>
-      </Section>
-    </>
-  )
-}
-
-/* -------------------------------------------------------------- extras */
-
-const KEYS: [string, string][] = [
-  ['Space', 'Start / pause timer'], ['R', 'Reset timer'], ['N', 'Next session'], ['1 · 2 · 3', 'Ambient · Home · Focus'],
-  ['T', 'Tasks'], ['M', 'Music'], ['J', 'Notes'], ['F', 'Fullscreen'], [',', 'Settings'], ['Esc', 'Close'],
-]
-
-export function ExtrasSection() {
-  const s = useStore((st) => st.settings)
-  const update = useStore((st) => st.update)
-  return (
-    <>
-      <Section title="Extras">
-        <Row label="Hide UI when idle" hint="In Ambient mode, controls fade out after a few seconds"><Toggle on={s.hideIdle} onChange={(v) => update({ hideIdle: v })} /></Row>
-        <Row label="Show logo"><Toggle on={s.showLogo} onChange={(v) => update({ showLogo: v })} /></Row>
-        <Row label="Logo text">
-          <input value={s.logoText} onChange={(e) => update({ logoText: e.target.value.slice(0, 18) })} placeholder="floe" />
-        </Row>
-      </Section>
-      <Section title="Keyboard shortcuts">
-        <ul className="keys">
-          {KEYS.map(([k, d]) => <li key={k}><kbd>{k}</kbd><span>{d}</span></li>)}
-        </ul>
       </Section>
     </>
   )

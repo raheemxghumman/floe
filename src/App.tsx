@@ -4,8 +4,12 @@ import './styles/clocks.css'
 import './styles/themes.css'
 import './styles/gate.css'
 import './styles/pets.css'
+import './styles/library.css'
+import './styles/prefs.css'
 import { useStore } from './store'
-import { toast, useIdle, useParallax, useShortcuts, useTimerEngine } from './hooks'
+import { toast, useIdle, useParallax, usePointerAway, useShortcuts, useTimerEngine, useWakeLockManager } from './hooks'
+import { randomizeThemes } from './components/settings/prefs'
+import { usePresence } from './lib/presence'
 import { handleRedirect } from './lib/spotify'
 import { initAccount, useAccount } from './lib/account'
 import { cloudEnabled } from './lib/supabase'
@@ -36,7 +40,18 @@ export default function App() {
   const anyPanel = useStore((s) => Object.values(s.panels).some(Boolean))
   const settingsOpen = useStore((s) => s.settingsOpen)
   const tone = useStore((s) => resolveTheme(s.settings.themes[s.view], s.settings.customThemes).tone)
+  const clockFont = useStore((s) => s.settings.clock.font)
+  const clockSize = useStore((s) => s.settings.clock.size)
   const { ready, user } = useAccount()
+  const perf = useStore((s) => s.settings.perf)
+  useWakeLockManager(perf.wakeLock)
+  usePresence('app')
+  const away = usePointerAway(perf.clearMode)
+  // Theme randomizer: a fresh look on every load
+  useEffect(() => {
+    const pool = useStore.getState().settings.randomTheme
+    if (pool !== 'off') randomizeThemes(pool)
+  }, [])
   const idle = useIdle(view === 'ambient' && hideIdle && !anyPanel && !settingsOpen)
 
   useEffect(() => {
@@ -60,14 +75,14 @@ export default function App() {
   }
 
   return (
-    <div className={`app v-${view} ${idle ? 'idle' : ''} ${settingsOpen ? 'drawer-open' : ''} ${tone === 'light' ? 'tone-light' : ''}`}>
+    <div className={`app v-${view} ${idle || away ? 'idle' : ''} ${settingsOpen ? 'drawer-open' : ''} ${tone === 'light' ? 'tone-light' : ''} cf-${clockFont} csz-${clockSize}`}>
       <Background />
       <div className="ui">
         {showLogo && <a className="logo" href="/" aria-label="Home page">{logoText || 'floe'}</a>}
         <div className="top-right">
-          <QuoteBlock view={view} />
           <TimerCard active={view === 'ambient'} />
         </div>
+        <QuoteBlock view={view} />
         <HomeView active={view === 'home'} />
         <FocusView active={view === 'focus'} />
         <Toolbar />

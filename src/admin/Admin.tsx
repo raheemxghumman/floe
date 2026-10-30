@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   Activity, ArrowLeft, Ban, Check, CheckCircle2, ChevronRight, Clock, Copy, KeyRound, LayoutDashboard, ListChecks, LogOut,
-  MoreHorizontal, RefreshCw, Search, Shield, ShieldCheck, Timer, Trash2, UserPlus, Users, Wand2, X,
+  MoreHorizontal, Radio, RefreshCw, Search, Shield, ShieldCheck, Timer, Trash2, UserPlus, Users, Wand2, X,
 } from 'lucide-react'
+import { LivePage } from './Live'
+import { usePresence } from '../lib/presence'
 import '../styles/app.css'
 import './admin.css'
 import { initAccount, isStaff, signOut, useAccount } from '../lib/account'
@@ -434,7 +436,8 @@ function UsersPage({ users, me, onOpen, onCreate, onAction, onRole }: {
 
 export default function Admin() {
   const { ready, user, profile } = useAccount()
-  const [tab, setTab] = useState<'overview' | 'users'>('overview')
+  const [tab, setTab] = useState<'overview' | 'users' | 'live'>('overview')
+  const [liveCount, setLiveCount] = useState<number | null>(null)
   const [range, setRange] = useState(30)
   const [ov, setOv] = useState<Overview | null>(null)
   const [users, setUsers] = useState<AdminUser[]>([])
@@ -446,6 +449,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => { document.title = 'floe · admin' }, [])
+  usePresence('admin')
   const staff = isStaff(profile)
 
   const load = useCallback(async () => {
@@ -509,6 +513,9 @@ export default function Admin() {
         <nav>
           <button className={tab === 'overview' ? 'on' : ''} onClick={() => setTab('overview')}><LayoutDashboard size={17} /> Overview</button>
           <button className={tab === 'users' ? 'on' : ''} onClick={() => setTab('users')}><Users size={17} /> Users <em>{users.length}</em></button>
+          {me.role === 'admin' && (
+            <button className={tab === 'live' ? 'on' : ''} onClick={() => setTab('live')}><Radio size={17} /> Live {liveCount != null && <em className="live-em">{liveCount}</em>}</button>
+          )}
         </nav>
         {me.role === 'admin' && <button className="btn adm-new" onClick={() => setCreating(true)}><UserPlus size={15} /> New user</button>}
         <div className="adm-me">
@@ -521,8 +528,8 @@ export default function Admin() {
       <main className="adm-main">
         <header className="adm-head">
           <div>
-            <h1>{tab === 'overview' ? 'Overview' : 'Users'}</h1>
-            <p className="muted">{tab === 'overview' ? 'How people are using floe.' : 'Manage accounts, roles and access.'}</p>
+            <h1>{tab === 'overview' ? 'Overview' : tab === 'users' ? 'Users' : 'Live'}</h1>
+            <p className="muted">{tab === 'overview' ? 'How people are using floe.' : tab === 'users' ? 'Manage accounts, roles and access.' : 'Who has floe open right now, and what they’re doing.'}</p>
           </div>
           <div className="row-inline">
             <button className={`icon-btn glass sm ${loading ? 'spinning' : ''}`} onClick={() => void load()} aria-label="Refresh" title="Refresh"><RefreshCw size={15} /></button>
@@ -530,7 +537,9 @@ export default function Admin() {
           </div>
         </header>
         <div className="adm-page" key={tab}>
-          {tab === 'overview'
+          {tab === 'live' && me.role === 'admin'
+            ? <LivePage onCount={setLiveCount} />
+            : tab === 'overview'
             ? <OverviewPage ov={ov} users={users} range={range} setRange={setRange} />
             : <UsersPage users={users} me={me} onOpen={setOpen} onCreate={() => setCreating(true)} onAction={onAction} onRole={(u, r) => void changeRole(u, r)} />}
         </div>

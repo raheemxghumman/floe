@@ -1,28 +1,30 @@
-import { ChartColumn, CircleUser, Clock, Music, Palette, PawPrint, Quote, Rocket, SlidersHorizontal, Sparkles, Timer, X } from 'lucide-react'
+import { ChartColumn, CircleUser, Clock, LifeBuoy, Music, Palette, PawPrint, Quote, Rocket, SlidersHorizontal, Sparkles, Timer, X } from 'lucide-react'
 import { useStore, type SettingsSection } from '../../store'
 import { ThemesSection } from './ThemesSection'
 import { StatsSection } from './StatsSection'
 import { ModesSection } from './ModesSection'
 import { CompanionsSection } from './CompanionsSection'
-import { AboutSection, AccountSection, ClockSection, ExtrasSection, MusicSection, QuotesSection, TimerSection } from './sections'
+import { AboutSection, AccountSection, MusicSection } from './sections'
+import { ClockSection, ExtrasSection, QuotesSection, SupportSection, TimerSection } from './prefs'
 
 const NAV: { id: SettingsSection; label: string; icon: typeof Palette; badge?: string }[] = [
-  { id: 'themes', label: 'Themes', icon: Palette, badge: 'LIVE' },
+  { id: 'themes', label: 'Themes', icon: Palette, badge: 'NEW' },
   { id: 'modes', label: 'Modes', icon: SlidersHorizontal },
   { id: 'companions', label: 'Companions', icon: PawPrint, badge: 'NEW' },
-  { id: 'clock', label: 'Clock', icon: Clock },
+  { id: 'clock', label: 'Clock', icon: Clock, badge: 'NEW' },
   { id: 'timer', label: 'Focus Timer', icon: Timer },
   { id: 'stats', label: 'Stats', icon: ChartColumn },
   { id: 'quotes', label: 'Quotes', icon: Quote },
   { id: 'music', label: 'Music', icon: Music },
   { id: 'extras', label: 'Extras', icon: Sparkles },
   { id: 'account', label: 'Account', icon: CircleUser },
+  { id: 'support', label: 'Support', icon: LifeBuoy },
   { id: 'about', label: 'What’s New', icon: Rocket },
 ]
 
 const BODY: Record<SettingsSection, () => JSX.Element> = {
   themes: ThemesSection, modes: ModesSection, companions: CompanionsSection, clock: ClockSection, timer: TimerSection, stats: StatsSection, quotes: QuotesSection,
-  music: MusicSection, extras: ExtrasSection, account: AccountSection, about: AboutSection,
+  music: MusicSection, extras: ExtrasSection, account: AccountSection, support: SupportSection, about: AboutSection,
 }
 
 export function SettingsDrawer() {

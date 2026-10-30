@@ -17,6 +17,10 @@ export const STYLE_PREVIEW: Record<string, ReactNode> = {
   pixel: <span className="cs-pixel">05:21</span>,
   words: <span className="cs-words">twenty-one<br />past five</span>,
   poster: <span className="cs-poster"><b>05</b><b>21</b></span>,
+  bar: <span className="cs-bar"><b>25:00</b><i><em /></i></span>,
+  gauge: <span className="cs-gauge"><i /><b>25:00</b></span>,
+  dots: <span className="cs-dots"><i>{Array.from({ length: 24 }, (_, k) => <em key={k} className={k < 15 ? 'on' : ''} />)}</i><b>25:00</b></span>,
+  pie: <span className="cs-pie"><i /><b>25:00</b></span>,
 }
 
 export const MODE_LABELS: { v: ViewMode; label: string }[] = [{ v: 'ambient', label: 'Ambient' }, { v: 'home', label: 'Home' }, { v: 'focus', label: 'Focus' }]

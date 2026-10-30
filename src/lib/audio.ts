@@ -53,6 +53,40 @@ export function playAlarm(sound: AlarmSound, volume: number) {
     case 'soft':
       ;[392, 493.88, 587.33].forEach((f, i) => tone(ac, out, f, t + i * 0.35, 2.4, 'sine', 0.22))
       break
+    case 'sparkle':
+      // quick shimmering run up the scale
+      ;[1318.5, 1568, 1975.5, 2637, 3136, 2637, 3951].forEach((f, i) => tone(ac, out, f, t + i * 0.07, 0.9, 'sine', 0.12))
+      ;[1318.5, 1975.5, 2637].forEach((f, i) => tone(ac, out, f, t + 0.9 + i * 0.07, 1.1, 'triangle', 0.08))
+      break
+    case 'marimba':
+      ;[523.25, 659.25, 783.99, 659.25, 1046.5].forEach((f, i) => {
+        tone(ac, out, f, t + i * 0.16, 0.5, 'sine', 0.3)
+        tone(ac, out, f * 4, t + i * 0.16, 0.12, 'sine', 0.05)
+      })
+      break
+    case 'gong':
+      for (const [ratio, amp] of [[1, 0.3], [1.48, 0.15], [2.31, 0.1], [3.1, 0.05]] as const) tone(ac, out, 98 * ratio, t, 5.5, 'sine', amp)
+      break
+    case 'kalimba':
+      ;[587.33, 880, 739.99, 987.77, 1174.66].forEach((f, i) => {
+        tone(ac, out, f, t + i * 0.22, 1.4, 'sine', 0.22)
+        tone(ac, out, f * 2.01, t + i * 0.22, 0.4, 'sine', 0.05)
+      })
+      break
+    case 'birds':
+      for (let i = 0; i < 6; i++) {
+        const at = t + i * 0.18 + (i > 2 ? 0.4 : 0)
+        const o = ac.createOscillator(), g = ac.createGain()
+        o.frequency.setValueAtTime(2600 + (i % 3) * 400, at)
+        o.frequency.exponentialRampToValueAtTime(4200 + (i % 2) * 600, at + 0.07)
+        o.frequency.exponentialRampToValueAtTime(2400, at + 0.12)
+        g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.12, at + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.14)
+        o.connect(g).connect(out); o.start(at); o.stop(at + 0.2)
+      }
+      break
+    case 'arcade':
+      ;[523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(ac, out, f, t + i * 0.09, 0.12, 'square', 0.07))
+      break
   }
 }
 

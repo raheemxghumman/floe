@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { create } from 'zustand'
-import { fmtTimer, MODE_LABEL, remainingOf, useNow, useStore } from './store'
+import { elapsedOf, fmtTimer, MODE_LABEL, remainingOf, useNow, useStore } from './store'
 import { playAlarm } from './lib/audio'
 
 /* ------------------------------------------------------------- toasts */
@@ -28,7 +28,7 @@ export function useTimerEngine() {
       const now = Date.now()
       useNow.setState({ now })
       const { timer, settings, complete } = useStore.getState()
-      if (timer.running && now >= timer.endAt) {
+      if (timer.running && settings.timer.kind !== 'stopwatch' && now >= timer.endAt) {
         const finished = complete()
         playAlarm(settings.timer.sound, settings.timer.volume)
         const [title, body] = COMPLETE_MSG[finished]
@@ -39,7 +39,7 @@ export function useTimerEngine() {
       }
       const s = useStore.getState()
       document.title = s.settings.timer.tabTitle && s.timer.running
-        ? `${fmtTimer(remainingOf(s.timer, now))} · ${MODE_LABEL[s.timer.mode]}`
+        ? `${fmtTimer(s.settings.timer.kind === 'stopwatch' ? elapsedOf(s.timer, now) : remainingOf(s.timer, now))} · ${s.settings.timer.kind === 'stopwatch' ? 'Stopwatch' : MODE_LABEL[s.timer.mode]}`
         : baseTitle
     }, 250)
     return () => { clearInterval(id); document.title = baseTitle }
@@ -123,4 +123,51 @@ export function useParallax() {
     window.addEventListener('pointermove', onMove, { passive: true })
     return () => { window.removeEventListener('pointermove', onMove); cancelAnimationFrame(raf) }
   }, [])
+}
+
+/* ---------------------------------------------------- prevent sleep */
+
+const useWakeStatus = create<{ status: 'Active' | 'Inactive' | 'Unsupported' }>(() => ({ status: 'Inactive' }))
+export const useWakeLock = () => useWakeStatus((s) => s.status)
+
+interface WakeSentinel { release(): Promise<void>; addEventListener(t: 'release', f: () => void): void }
+
+/** Holds a screen wake lock while enabled, re-acquiring it when the tab becomes visible again. */
+export function useWakeLockManager(enabled: boolean) {
+  useEffect(() => {
+    const api = (navigator as unknown as { wakeLock?: { request(t: 'screen'): Promise<WakeSentinel> } }).wakeLock
+    if (!api) { useWakeStatus.setState({ status: 'Unsupported' }); return }
+    if (!enabled) { useWakeStatus.setState({ status: 'Inactive' }); return }
+    let lock: WakeSentinel | null = null
+    let alive = true
+    const acquire = async () => {
+      if (document.visibilityState !== 'visible' || !alive) return
+      try {
+        lock = await api.request('screen')
+        useWakeStatus.setState({ status: 'Active' })
+        lock.addEventListener('release', () => { if (alive) useWakeStatus.setState({ status: 'Inactive' }) })
+      } catch { useWakeStatus.setState({ status: 'Inactive' }) }
+    }
+    void acquire()
+    document.addEventListener('visibilitychange', acquire)
+    return () => { alive = false; document.removeEventListener('visibilitychange', acquire); void lock?.release(); useWakeStatus.setState({ status: 'Inactive' }) }
+  }, [enabled])
+}
+
+/* ------------------------------------------------------- clear mode */
+
+/** True while the mouse is outside the browser window (for Clear mode). */
+export function usePointerAway(enabled: boolean) {
+  const [away, setAway] = useState(false)
+  useEffect(() => {
+    if (!enabled) { setAway(false); return }
+    const leave = (e: MouseEvent) => { if (!e.relatedTarget) setAway(true) }
+    const enter = () => setAway(false)
+    const blur = () => setAway(true)
+    document.addEventListener('mouseout', leave)
+    document.addEventListener('mouseover', enter)
+    window.addEventListener('blur', blur)
+    return () => { document.removeEventListener('mouseout', leave); document.removeEventListener('mouseover', enter); window.removeEventListener('blur', blur) }
+  }, [enabled])
+  return away
 }

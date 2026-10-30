@@ -1,18 +1,24 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
-import { durationOf, fmtTimer, MODE_LABEL, remainingOf, useNow, useStore, type ClockStyle, type ProgressStyle, type TimerMode } from '../store'
+import { durationOf, elapsedOf, fmtTimer, MODE_LABEL, remainingOf, useNow, useStore, type ClockStyle, type ProgressStyle, type TallyStyle, type TimerMode } from '../store'
 
 /* ------------------------------------------------------------- shared */
 
 export function useSession() {
   const timer = useStore((s) => s.timer)
   const t = useStore((s) => s.settings.timer)
+  const est = useStore((s) => s.tasks.find((x) => x.id === s.activeTaskId)?.est)
   const now = useNow((s) => s.now)
+  if (t.kind === 'stopwatch') {
+    // counts up; progress loops every hour so rings and bars still move
+    const elapsed = elapsedOf(timer, now)
+    return { timer, left: elapsed, total: 3_600_000, progress: (elapsed % 3_600_000) / 3_600_000, active: timer.running || elapsed > 0, mode: timer.mode, stopwatch: true }
+  }
   const left = remainingOf(timer, now)
-  const total = durationOf(timer.mode, t)
+  const total = durationOf(timer.mode, t, est)
   const progress = total ? Math.min(1, Math.max(0, 1 - left / total)) : 0
   // a session is "on" while running, or paused part-way through
   const active = timer.running || left < total - 500
-  return { timer, left, total, progress, active, mode: timer.mode }
+  return { timer, left, total, progress, active, mode: timer.mode, stopwatch: false }
 }
 
 /** Focus drifts violet → magenta → coral as it nears the end; breaks drift teal → sky. */
@@ -96,7 +102,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
 export function TimeDisplay({ style, kind }: { style: ClockStyle; kind: 'clock' | 'timer' }) {
   const now = useNow((s) => s.now)
   const { format, seconds, ampm } = useStore((s) => s.settings.clock)
-  const { left, progress, active, mode, timer } = useSession()
+  const { left, progress, active, mode, timer, stopwatch } = useSession()
   const color = sessionColor(mode, progress)
   const d = new Date(now)
 
@@ -115,13 +121,55 @@ export function TimeDisplay({ style, kind }: { style: ClockStyle; kind: 'clock' 
     const h = Math.floor(total / 3600)
     a = h ? `${h}:${pad(Math.floor((total % 3600) / 60))}` : pad(Math.floor(total / 60))
     b = pad(total % 60)
-    words = countdownWords(left)
+    words = stopwatch ? [...countdownWords(left).slice(0, 2), 'in'] : countdownWords(left)
     frac = progress
-    sub = MODE_LABEL[mode]
+    sub = stopwatch ? 'Stopwatch' : MODE_LABEL[mode]
   }
   const text = `${a}:${b}`
 
   switch (style) {
+    case 'bar':
+      return (
+        <div className="tdisp t-bar" style={{ ['--sess' as string]: color }}>
+          <span className="tb-time"><RollingText text={text} /></span>
+          <div className="tb-track"><div style={{ transform: `scaleX(${frac})` }} /></div>
+        </div>
+      )
+    case 'gauge': {
+      const R = 40, C = 2 * Math.PI * R
+      return (
+        <div className="tdisp t-gauge" style={{ ['--sess' as string]: color }}>
+          <svg viewBox="0 0 100 100" aria-hidden>
+            <circle cx="50" cy="50" r={R} className="tg-track" />
+            <circle cx="50" cy="50" r={R} className="tg-fill" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} transform="rotate(-90 50 50)" />
+          </svg>
+          <span className="tg-time">{text}</span>
+        </div>
+      )
+    }
+    case 'dots': {
+      const lit = Math.round(frac * 60)
+      return (
+        <div className="tdisp t-dots" style={{ ['--sess' as string]: color }}>
+          <div className="td-grid">{Array.from({ length: 60 }, (_, i) => <i key={i} className={i < lit ? 'on' : ''} />)}</div>
+          <span className="td-time">{text}</span>
+        </div>
+      )
+    }
+    case 'pie': {
+      const ang = frac * 360, rad = ((ang - 90) * Math.PI) / 180
+      const x = 50 + Math.cos(rad) * 42, y = 50 + Math.sin(rad) * 42
+      const wedge = frac >= 0.999 ? 'M50 8 A42 42 0 1 1 49.99 8 Z' : `M50 50 L50 8 A42 42 0 ${ang > 180 ? 1 : 0} 1 ${x} ${y} Z`
+      return (
+        <div className="tdisp t-pie" style={{ ['--sess' as string]: color }}>
+          <svg viewBox="0 0 100 100" aria-hidden>
+            <circle cx="50" cy="50" r="42" className="tpie-bg" />
+            {frac > 0.001 && <path d={wedge} className="tpie-fill" />}
+          </svg>
+          <span className="tpie-time">{text}</span>
+        </div>
+      )
+    }
     case 'flip':
       return (
         <div className="tdisp t-flip">
@@ -226,7 +274,7 @@ export function Clock() {
 /* ------------------------------------------------- session progress */
 
 /** Styles that already draw their own progress, so an extra ring/orbit would double up. */
-const SELF_PROGRESS: ClockStyle[] = ['ring', 'analog']
+const SELF_PROGRESS: ClockStyle[] = ['ring', 'analog', 'bar', 'gauge', 'dots', 'pie']
 
 /**
  * Wraps a time display with the chosen progress visual.
@@ -237,7 +285,7 @@ export function ProgressFrame({ kind, clockStyle, show, children, extra }: {
 }) {
   const { progress, mode, left } = useSession()
   const color = sessionColor(mode, progress)
-  const effective = SELF_PROGRESS.includes(clockStyle) && (kind === 'ring' || kind === 'orbit') ? 'off' : kind
+  const effective = SELF_PROGRESS.includes(clockStyle) && (kind === 'ring' || kind === 'orbit' || (kind === 'bar' && clockStyle === 'bar')) ? 'off' : kind
   const on = show && effective !== 'off'
   const R = 46, C = 2 * Math.PI * R
   const a = progress * Math.PI * 2 - Math.PI / 2
@@ -288,10 +336,25 @@ export function TomatoDots({ total, done, current }: { total: number; done: numb
 export const CLOCK_STYLES: { v: ClockStyle; label: string }[] = [
   { v: 'classic', label: 'Classic' }, { v: 'flip', label: 'Flip' }, { v: 'ring', label: 'Ring' }, { v: 'analog', label: 'Analog' },
   { v: 'minimal', label: 'Minimal' }, { v: 'pixel', label: 'Pixel' }, { v: 'words', label: 'Words' }, { v: 'poster', label: 'Poster' },
+  { v: 'bar', label: 'Progress Bar' }, { v: 'gauge', label: 'Gauge' }, { v: 'dots', label: 'Dot Matrix' }, { v: 'pie', label: 'Pie' },
 ]
 
 export const PROGRESS_OPTIONS: Record<'home' | 'focus' | 'ambient', { v: ProgressStyle; label: string }[]> = {
   home: [{ v: 'orbit', label: 'Orbit' }, { v: 'bar', label: 'Bar' }, { v: 'glow', label: 'Glow' }, { v: 'off', label: 'Off' }],
   focus: [{ v: 'ring', label: 'Ring' }, { v: 'orbit', label: 'Orbit' }, { v: 'bar', label: 'Bar' }, { v: 'glow', label: 'Glow' }, { v: 'off', label: 'Off' }],
   ambient: [{ v: 'bar', label: 'Bar' }, { v: 'glow', label: 'Glow' }, { v: 'off', label: 'Off' }],
+}
+
+/** Session tallies in the chosen style; each mark is one focus session of the current cycle. */
+export function Tallies({ style, total, done, current }: { style: TallyStyle; total: number; done: number; current: number }) {
+  if (style === 'tomatoes') return <TomatoDots total={total} done={done} current={current} />
+  if (style === 'numbers') return <div className="tallies ty-numbers" title={`${done} of ${total}`}><strong>{done}</strong> / {total}</div>
+  const glyph = { dots: '●', stars: '★', hearts: '♥', bars: '' }[style]
+  return (
+    <div className={`tallies ty-${style}`} title={`${done} of ${total} before a long break`}>
+      {Array.from({ length: total }, (_, i) => (
+        <span key={i} className={i < done ? 'on' : i === done && current > 0 ? 'now' : ''} style={{ ['--f' as string]: i === done ? current : i < done ? 1 : 0 }}>{glyph}</span>
+      ))}
+    </div>
+  )
 }

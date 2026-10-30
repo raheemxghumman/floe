@@ -74,6 +74,8 @@ export async function signOut() {
   const { user } = useAccount.getState()
   // flush anything still waiting in the debounce before the session goes away
   if (user && pushTimer) { clearTimeout(pushTimer); await push(user.id).catch(() => {}) }
+  // drop off the admin "Live" list right away instead of after the heartbeat times out
+  if (user) await supabase?.rpc('presence_leave').then(() => {}, () => {})
   // local scope: signing out here must not end the same account's sessions on other devices
   await supabase?.auth.signOut({ scope: 'local' })
   wipeLocal()

@@ -1,63 +1,113 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { SCENES, type SceneId } from '../scenes'
+import { createOverlay, type Fx } from '../scenes/overlays'
+import { ShaderRenderer, type ShaderLook } from '../shaders/renderer'
 import { resolveTheme, type ThemeDef } from '../themes'
 import { useStore } from '../store'
 import { mediaUrl } from '../lib/media'
 
-export function CanvasScene({ id, paused = false }: { id: SceneId; paused?: boolean }) {
-  const ref = useRef<HTMLCanvasElement>(null)
-  const pausedRef = useRef(paused)
-  pausedRef.current = paused
-
+/**
+ * One animation loop for every canvas-based theme: sizes the canvas, pauses when the tab is hidden,
+ * and renders a single still frame when motion is reduced or animated themes are turned off.
+ */
+function useAnimLoop(
+  ref: RefObject<HTMLCanvasElement>,
+  setup: (cv: HTMLCanvasElement, w: number, h: number) => (t: number, dt: number) => void,
+  deps: unknown[],
+  scale: (dpr: number) => number = (dpr) => Math.min(dpr, 1.5),
+) {
+  const still = useStore((s) => s.settings.perf.staticThemes)
   useEffect(() => {
     const cv = ref.current!
-    const ctx = cv.getContext('2d')!
-    let scene: ReturnType<(typeof SCENES)[SceneId]>
-    let raf = 0
-    let last = performance.now()
-    let t = 0
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    const setup = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+    let draw: (t: number, dt: number) => void = () => {}
+    let raf = 0, last = performance.now(), t = 6
+    const freeze = still || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const init = () => {
       const w = cv.clientWidth || 1, h = cv.clientHeight || 1
-      cv.width = Math.round(w * dpr)
-      cv.height = Math.round(h * dpr)
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      scene = SCENES[id](ctx, w, h, dpr)
-      scene.draw(t, 0.016)
+      const k = scale(window.devicePixelRatio || 1)
+      cv.width = Math.max(1, Math.round(w * k)); cv.height = Math.max(1, Math.round(h * k))
+      draw = setup(cv, w, h)
+      draw(t, 0.016)
     }
     const loop = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000)
-      last = now
-      if (!pausedRef.current) {
-        t += dt
-        ctx.globalAlpha = 1
-        ctx.globalCompositeOperation = 'source-over'
-        scene.draw(t, dt)
-      }
+      last = now; t += dt
+      draw(t, dt)
       raf = requestAnimationFrame(loop)
     }
-    setup()
-    if (!reduce) raf = requestAnimationFrame(loop)
-
+    try { init() } catch { return }
+    if (!freeze) raf = requestAnimationFrame(loop)
     let rt = 0
-    const ro = new ResizeObserver(() => { clearTimeout(rt); rt = window.setTimeout(setup, 120) })
+    const ro = new ResizeObserver(() => { clearTimeout(rt); rt = window.setTimeout(() => { try { init() } catch { /* context lost */ } }, 120) })
     ro.observe(cv)
     const vis = () => {
       cancelAnimationFrame(raf)
-      if (!document.hidden && !reduce) { last = performance.now(); raf = requestAnimationFrame(loop) }
+      if (!document.hidden && !freeze) { last = performance.now(); raf = requestAnimationFrame(loop) }
     }
     document.addEventListener('visibilitychange', vis)
-    return () => {
-      cancelAnimationFrame(raf)
-      clearTimeout(rt)
-      ro.disconnect()
-      document.removeEventListener('visibilitychange', vis)
-    }
-  }, [id])
+    return () => { cancelAnimationFrame(raf); clearTimeout(rt); ro.disconnect(); document.removeEventListener('visibilitychange', vis) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, still])
+}
 
+export function CanvasScene({ id }: { id: SceneId }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  useAnimLoop(ref, (cv, w, h) => {
+    const ctx = cv.getContext('2d')!
+    const dpr = cv.width / w
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    const scene = SCENES[id](ctx, w, h, dpr)
+    return (t, dt) => { ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; scene.draw(t, dt) }
+  }, [id])
   return <canvas ref={ref} className="bg-fill" />
+}
+
+/** GPU shader themes. Rendered at reduced resolution: gradients are smooth, so it looks identical and costs far less. */
+export function ShaderScene({ look }: { look: ShaderLook }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  const [failed, setFailed] = useState(false)
+  const renderer = useRef<ShaderRenderer | null>(null)
+  useEffect(() => {
+    // if the GPU drops the context (driver reset, too many tabs), show the CSS gradient instead of gray
+    const cv = ref.current
+    const lost = (e: Event) => { e.preventDefault(); setFailed(true) }
+    cv?.addEventListener('webglcontextlost', lost)
+    return () => { cv?.removeEventListener('webglcontextlost', lost); renderer.current?.dispose(); renderer.current = null }
+  }, [])
+  useAnimLoop(ref, (cv) => {
+    try {
+      if (!renderer.current || renderer.current.gl.isContextLost()) renderer.current = new ShaderRenderer(cv)
+      if (renderer.current.gl.isContextLost()) throw new Error('context lost')
+    } catch { setFailed(true); return () => {} }
+    const r = renderer.current
+    return (t) => r.draw(look, t)
+  }, [look], () => Math.min(0.6, 1280 / Math.max(window.innerWidth, 1)))
+  if (failed) return <div className="bg-fill" style={{ background: `linear-gradient(135deg, ${look.colors.join(', ')})` }} />
+  return <canvas ref={ref} className="bg-fill shader-canvas" />
+}
+
+/** Transparent canvas of living effects drawn over a photo. */
+function Overlay({ fx }: { fx: Fx[] }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  useAnimLoop(ref, (cv, w, h) => {
+    const ctx = cv.getContext('2d')!
+    const dpr = cv.width / w
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    const layer = createOverlay(ctx, w, h, fx)
+    return (t, dt) => layer.draw(t, dt)
+  }, [fx], (dpr) => Math.min(dpr, 1.25))
+  return <canvas ref={ref} className="bg-fill overlay-canvas" />
+}
+
+export function PhotoBg({ theme }: { theme: Extract<ThemeDef, { kind: 'photo' }> }) {
+  const [loaded, setLoaded] = useState(false)
+  const still = useStore((s) => s.settings.perf.staticThemes)
+  return (
+    <div className="bg-fill photo-bg">
+      <img className={`bg-fill media ${still ? '' : 'drift'} ${loaded ? 'in' : ''}`} src={theme.src} alt="" onLoad={() => setLoaded(true)} style={{ objectPosition: theme.focus ?? 'center' }} />
+      {theme.fx.length > 0 && <Overlay fx={theme.fx} />}
+    </div>
+  )
 }
 
 export function GradientBg({ theme }: { theme: Extract<ThemeDef, { kind: 'gradient' }> }) {
@@ -116,6 +166,8 @@ function ThemeLayer({ theme }: { theme: ThemeDef }) {
     case 'gradient': return <GradientBg theme={theme} />
     case 'flat': return <FlatBg theme={theme} />
     case 'scene': return <CanvasScene id={theme.scene} />
+    case 'shader': return <ShaderScene look={theme.look} />
+    case 'photo': return <PhotoBg theme={theme} />
     case 'youtube': return <YouTubeBg id={theme.videoId} sound={sound} />
     default: return <MediaBg theme={theme} />
   }

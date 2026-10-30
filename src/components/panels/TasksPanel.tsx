@@ -6,7 +6,8 @@ import { FloatingPanel } from './FloatingPanel'
 export function TasksPanel() {
   const tasks = useStore((s) => s.tasks)
   const activeId = useStore((s) => s.activeTaskId)
-  const { addTask, toggleTask, removeTask, editTask, setActiveTask, clearDone } = useStore.getState()
+  const { addTask, toggleTask, removeTask, editTask, setActiveTask, clearDone, setTaskEst } = useStore.getState()
+  const eta = useStore((s) => s.settings.timer.taskEta)
   const [text, setText] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
   const done = tasks.filter((t) => t.done).length
@@ -43,6 +44,11 @@ export function TasksPanel() {
               />
             ) : (
               <span className="task-text" onDoubleClick={() => setEditing(t.id)}>{t.text}</span>
+            )}
+            {eta && !t.done && (
+              <label className="est" title="Estimate in minutes (Task ETA mode)">
+                <input type="number" min={1} max={600} value={t.est ?? ''} placeholder="min" onChange={(e) => setTaskEst(t.id, e.target.value ? Number(e.target.value) : undefined)} />
+              </label>
             )}
             {t.pomos > 0 && <span className="pomo-count" title="Focus sessions"><Timer size={11} />{t.pomos}</span>}
             {!t.done && (

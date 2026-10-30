@@ -1,8 +1,7 @@
 /* ================================================================ TIME DISPLAYS (em-based) */
 
 .stage { position: relative; display: grid; place-items: center; }
-.stage-home { font-size: min(clamp(100px, 12.5vw, 200px), 22vh); }
-.stage-focus { font-size: min(clamp(84px, 10vw, 168px), 18vh); margin: 6px 0 2px; }
+.stage-focus { margin: 6px 0 2px; }
 .tc-time { font-size: 64px; margin: 2px 0 8px; display: grid; place-items: center; }
 .tc-time .tdisp { text-shadow: none; }
 

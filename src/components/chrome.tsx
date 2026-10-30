@@ -48,7 +48,7 @@ export function Dock() {
       </div>
       {cloudEnabled && <AccountButton />}
       <button className="sq-btn" onClick={() => openSettings()} aria-label="Settings" data-tip="Settings · ,"><Settings size={17} /></button>
-      <button className="sq-btn" onClick={toggleFullscreen} aria-label="Fullscreen" data-tip="Fullscreen · F">
+      <button className="sq-btn wide-only" onClick={toggleFullscreen} aria-label="Fullscreen" data-tip="Fullscreen · F">
         {fs ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
       </button>
     </nav>
@@ -74,7 +74,7 @@ export function Toolbar() {
           {id === 'tasks' && pending > 0 && <span className="badge">{pending}</span>}
         </button>
       ))}
-      <button className="sq-btn" onClick={() => openSettings('modes')} aria-label="Customize this mode" data-tip="Customize · C">
+      <button className="sq-btn wide-only" onClick={() => openSettings('modes')} aria-label="Customize this mode" data-tip="Customize · C">
         <SlidersHorizontal size={17} />
       </button>
     </nav>

@@ -48,9 +48,13 @@ A pomodoro timer that lives inside slow, moving worlds: hand-drawn live scenes, 
 
 | | Feature | What it does |
 |---|---|---|
+| 📚 | **Theme Library** | 66 themes in categories like Flocus: **Gradients & Colors** (36), **Abstract** (12), **Animated** (18), plus Nature, Urban and Interior scenes. Row view with "See all", a live preview card, and a theme randomizer. |
+| 🌈 | **GPU gradient & abstract themes** | 40 animated WebGL shader themes (grainy mesh gradients, heart glows, flares, silk, ripples, rainbow road, CRT, lava lamp…) rendered at reduced resolution so they stay smooth on laptops. |
 | 🌲 | **11 live scenes** | Enchanted Forest, Rainy City, Starry Night, Aurora, Winter Cabin, Synthwave, Ocean Sunset, Sakura, Pixel Valley, Pastel Park and Cozy Cat, all drawn live on `<canvas>` (no video files). |
-| 🎨 | **Themes for every mode** | Ambient, Home and Focus each get their own background: scenes, grainy gradients, flat "paper" colors, 24/7 lofi YouTube streams, or your own image / video / YouTube link (uploads stay in IndexedDB). Light themes switch the UI to dark text automatically. |
-| ⏱️ | **8 clock styles, everywhere** | Classic, 3D Flip, Ring, Analog, Minimal, Pixel, Words and Poster, for the Home clock, the Focus countdown and the Ambient timer card. In countdown modes they adapt: Analog becomes a kitchen-timer dial, Words reads "twenty-four minutes left". |
+| 🎨 | **Your own backgrounds** | Drop in an image or looping video (kept on your device in IndexedDB) or save up to 5 YouTube videos. Light themes switch the UI to dark text automatically. |
+| ⏱️ | **12 clock & timer styles, 12 fonts** | Classic, 3D Flip, Ring, Analog, Minimal, Pixel, Words, Poster, **Progress Bar**, **Gauge**, **Dot Matrix** and **Pie**, in Small / Regular / Huge, set in 12 typefaces (Bold, Light, Soft, Bubble, Minimal, Serif, Serif Condensed, Sporty, Heavy Wide, Digital, Handwritten…). |
+| 🍅 | **Pomodoro, Countdown or Stopwatch** | Plus **Task ETA mode** (focus length follows your task's estimate), 11 synthesized alert sounds, 6 session-tally styles, a daily streak counter and a **picture-in-picture** floating timer (Chrome / Edge). |
+| 🧘 | **Extras** | Clear mode (UI hides when your mouse leaves the window), Prevent sleep (Screen Wake Lock), disable animated themes, default settings tab, dynamic or plain greetings. |
 | 🎛️ | **Every mode customizable** | Per mode: clock style, progress style (Ring, 3D Orbit, Bar, Glow), companion, its position and size, and which pieces show (greeting, quote, tabs, cycle, task, timer card). One click on **Customize** (or `C`). |
 | 🪐 | **Live session progress** | While a session runs, the Home clock shows a 3D tilted orbit ring, a bar or a breathing glow. The color drifts violet → magenta → coral as the session ends (teal → sky on breaks). |
 | 🐾 | **6 companions** | Tomato, Sprout (grows as you level), Mochi the cat, Kit the fox, Boo the ghost and Bit the robot, each with their own work / break / idle / pause animations, speech bubbles and Lively / Calm / Still motion. |
@@ -59,10 +63,11 @@ A pomodoro timer that lives inside slow, moving worlds: hand-drawn live scenes, 
 | 🌧️ | **Sound mixer** | Rain, waves, wind, fireplace, birds and white/pink/brown noise, synthesized in real time with the Web Audio API. |
 | ✅ | **Tasks & notes** | Draggable glass panels. Pin a task to the timer and floe counts the sessions it took. |
 | 📊 | **Stats** | Focus calendar heatmap, trend chart, streaks, sessions and break time. No paywall. |
-| 💬 | **220+ quotes** | Curated motivational quotes with authors, plus live extras from [QuotesDB](https://quotes-db.vercel.app/) when it's reachable. |
+| 💬 | **220+ quotes** | Curated motivational quotes with authors, plus live extras from [QuotesDB](https://quotes-db.vercel.app/). Show them on any mode, in 3 sizes and 4 positions, with a one-click **next quote** button. |
 | 🔐 | **Members only** | `/app` requires an account. New people can sign up, or tap **Ask the owner for an account**: a short form opens WhatsApp (or email) with their name, email, preferred username and reason already written out. |
 | 👤 | **Accounts & sync** | Sign in with **email or username**. Tasks, notes, settings and stats sync across devices via Supabase. Signing out clears the device, so shared computers stay private. |
 | 🛡️ | **Admin dashboard** | `/admin`: live stats & charts, user directory with levels, create accounts (with a one-click **copy credentials + link** button), grant XP, promote to moderator/admin, suspend, reset passwords, delete. |
+| 🟢 | **Live view (admins)** | See who has floe open right now: which screen they're on (Home / Focus / Ambient / Settings), their timer counting down live, when they came online, focus minutes today, streak and device. Heartbeats every 30 s via a locked-down RPC; task names and notes are never shared. |
 | ✨ | **Landing page** | WebGL shader blob hero, a 3D browser mockup that tilts into view on scroll, a 3D carousel of live scenes, and interactive demos. |
 
 ## Screenshots
@@ -245,6 +250,10 @@ flowchart LR
 
 Pixel Valley is painted at about ¼ resolution and scaled up with `imageSmoothingEnabled = false` for crisp pixel art. Theme thumbnails are rendered from the real scene code a few frames in.
 
+**Shader themes** share one WebGL1 renderer: a single full-screen triangle, a fragment program picked per theme (mesh gradient, heart, flare, silk, ripple, sunburst, CRT…), and 6 palette colors + 4 parameters as uniforms, so a new theme is just data. The canvas renders at ≤ 0.6× resolution and is upscaled by CSS; if the GPU drops the context, the theme falls back to a CSS gradient instead of a blank screen.
+
+**Photo themes** (coming soon) will be 1920 px WebP files with a slow Ken Burns drift plus a transparent canvas of effects anchored to the photo (`rain`, `snow`, `petals`, `fireflies`, `embers`, `fog`, `rays`, `bokeh`, `flicker`…). `scripts/build-photo-themes.py` turns a folder of images into themes, including attribution for each one.
+
 ---
 
 ## Data model
@@ -373,10 +382,13 @@ npm run build        # → dist/
 
 ```
 floe/
-├─ public/                  _redirects, _headers, favicon
+├─ public/                  _redirects, _headers, favicon, themes/ (photo WebPs)
+├─ scripts/                 build-photo-themes.py
 ├─ supabase/
 │  ├─ schema.sql            tables, RLS, trigger, admin RPCs
 │  ├─ 002_roles_usernames.sql
+│  ├─ 003_xp.sql            bonus XP
+│  ├─ 004_presence.sql      live presence (heartbeat RPC + admin-only read)
 │  └─ functions/
 │     ├─ admin/index.ts     create · set_role · suspend · delete · reset_password
 │     └─ login/index.ts     username-or-email sign in
@@ -385,16 +397,19 @@ floe/
 │  ├─ App.tsx               app shell
 │  ├─ store.ts              Zustand store: timer, settings, tasks, notes, stats
 │  ├─ hooks.ts              timer engine, shortcuts, idle, parallax, toasts
-│  ├─ themes.ts             theme catalog (scenes, gradients, paper, streams)
-│  ├─ scenes/               11 canvas scenes + helpers
+│  ├─ themes.ts             theme catalog + categories (Theme Library)
+│  ├─ themelib/             shader theme looks, generated photo themes
+│  ├─ shaders/              WebGL programs + renderer
+│  ├─ scenes/               11 canvas scenes, photo overlays (rain, snow, embers…)
 │  ├─ components/
-│  │  ├─ clocks.tsx         8 time-display styles, progress frames
+│  │  ├─ clocks.tsx         12 time-display styles, progress frames, tallies
+│  │  ├─ Pip.tsx            picture-in-picture timer
 │  │  ├─ companions.tsx     6 companions, accessories, effects
 │  │  ├─ LevelUp.tsx        level-up celebration
 │  │  ├─ views.tsx          Home, Ambient timer card, Focus
 │  │  ├─ Background.tsx     cross-fading theme renderer
 │  │  ├─ panels/            Tasks, Notes, Music (Spotify + sounds)
-│  │  ├─ settings/          drawer, themes, stats, sections
+│  │  ├─ settings/          drawer, theme library, clock/timer/quotes/extras, stats, support
 │  │  └─ AuthForm.tsx
 │  ├─ admin/                dashboard, charts
 │  ├─ landing/              landing page + Three.js hero

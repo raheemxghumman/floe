@@ -1,0 +1,76 @@
+/* ================================================================ PHOTO + SHADER BACKGROUNDS */
+
+.shader-canvas { image-rendering: auto; }
+.photo-bg { overflow: hidden; background: #08070c; }
+.photo-bg img { object-fit: cover; opacity: 0; transition: opacity 1.2s var(--ease-out); }
+.photo-bg img.in { opacity: 1; }
+/* a slow cinematic camera drift so stills feel alive */
+.photo-bg img.drift { animation: photoDrift 70s ease-in-out infinite alternate; }
+@keyframes photoDrift {
+  0% { transform: scale(1.04) translate(0, 0); }
+  50% { transform: scale(1.1) translate(-1.2%, -0.8%); }
+  100% { transform: scale(1.06) translate(1%, -1.4%); }
+}
+.overlay-canvas { pointer-events: none; }
+
+/* ================================================================ THEMES PAGE */
+
+.theme-preview {
+  position: relative; margin-top: 16px; aspect-ratio: 16 / 9; max-height: 320px; width: 100%; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px rgba(0, 0, 0, 0.8); animation: pageIn 0.5s var(--ease-out) both;
+}
+.theme-preview .thumb-wrap, .theme-preview .thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tp-clock { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-family: var(--font-display); font-weight: 800; font-size: clamp(40px, 6vw, 72px); letter-spacing: -0.04em; text-shadow: 0 6px 30px rgba(0, 0, 0, 0.35); color: #fff; }
+.tp-name { position: absolute; left: 12px; bottom: 12px; padding: 5px 11px; border-radius: 8px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(6px); font-size: 12.5px; font-weight: 700; }
+
+.t-card { margin: 14px 0; border-radius: 16px; background: #0c0b12; box-shadow: 0 0 0 1px #1c1a26 inset; overflow: hidden; }
+.t-card-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; text-align: left; }
+.t-card-head > span { display: flex; flex-direction: column; gap: 3px; }
+.t-card-head strong { font-family: var(--font-display); font-size: 21px; letter-spacing: -0.02em; display: inline-flex; align-items: center; gap: 8px; }
+.t-card-head svg { transition: transform 0.35s var(--spring); flex: none; }
+.t-card-head svg.rot { transform: rotate(180deg); }
+.t-card-head.static { cursor: default; padding-bottom: 6px; }
+.t-card-body { padding: 4px 20px 20px; }
+.new-badge { font-style: normal; font-family: var(--font-ui); font-size: 10px; font-weight: 800; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 5px; background: rgba(34, 197, 94, 0.18); color: #4ade80; }
+
+.dropzone {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 30px 16px; border-radius: 14px; cursor: pointer; text-align: center;
+  border: 1.5px dashed rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.02); transition: border-color 0.2s, background 0.2s, transform 0.3s var(--spring);
+}
+.dropzone:hover, .dropzone.over { border-color: var(--accent-2); background: rgba(116, 50, 255, 0.08); }
+.dropzone.over { transform: scale(1.01); }
+.dropzone svg { color: var(--accent-2); }
+.yt-block { display: flex; flex-direction: column; gap: 6px; margin-top: 18px; }
+.yt-block .inline-form { margin: 6px 0 0; }
+
+.lib-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.lib-chips button { padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink-2); background: rgba(255, 255, 255, 0.06); transition: background 0.2s, color 0.2s; }
+.lib-chips button:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.lib-chips button.on { background: var(--accent); color: #fff; }
+.lib-row { margin-bottom: 18px; }
+.lib-row-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.lib-row-head h4, .lib-grid-title { font-family: var(--font-display); font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+.lib-row-head .text-btn { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; color: var(--ink-2); }
+.lib-scroll { display: grid; grid-auto-flow: column; grid-auto-columns: 168px; gap: 14px; overflow-x: auto; padding: 4px 2px 12px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.15) transparent; }
+.lib-scroll > * { scroll-snap-align: start; }
+.lib-grid-title { margin: 4px 0 12px; }
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px 14px; }
+.lib-cell { position: relative; display: flex; flex-direction: column; gap: 7px; }
+.lib-card { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden; background: #15141c; box-shadow: 0 0 0 1px var(--line); transition: transform 0.35s var(--spring), box-shadow 0.25s; }
+.lib-card:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25), 0 16px 30px -16px rgba(0, 0, 0, 0.9); }
+.lib-card.on { box-shadow: 0 0 0 2.5px #fff, 0 16px 34px -14px rgba(116, 50, 255, 0.7); }
+.lib-card .thumb-wrap, .lib-card .thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.lib-card .thumb { transition: transform 0.6s var(--ease-out); }
+.lib-card:hover .thumb { transform: scale(1.06); }
+.lib-badge { position: absolute; top: 7px; left: 7px; font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em; padding: 3px 6px; border-radius: 5px; background: var(--accent); color: #fff; }
+.lib-name { font-size: 13px; font-weight: 600; text-align: center; color: #e8e6f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-remove { position: absolute; top: -7px; right: -7px; z-index: 2; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #2a2833; opacity: 0; transition: opacity 0.2s; }
+.lib-cell:hover .lib-remove { opacity: 1; }
+.credits { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+.credits a { color: #c4b0ff; }
+
+@media (max-width: 720px) {
+  .lib-scroll { grid-auto-columns: 140px; }
+  .lib-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .t-card-body, .t-card-head { padding-left: 14px; padding-right: 14px; }
+}
